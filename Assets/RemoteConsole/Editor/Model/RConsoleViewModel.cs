@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using RConsole.Common;
-using UnityEngine;
 
 namespace RConsole.Editor
 {
@@ -31,14 +30,14 @@ namespace RConsole.Editor
         /// <summary>
         /// 已连接的客户端列表
         /// </summary>
-        private List<ClientInfoModel> _connectedClients = new List<ClientInfoModel>();
-        public IReadOnlyList<ClientInfoModel> ConnectedClients => _connectedClients;
-        public void AddConnectedClient(ClientInfoModel client)
+        private List<ClientModel> _connectedClients = new List<ClientModel>();
+        public IReadOnlyList<ClientModel> ConnectedClients => _connectedClients;
+        public void AddConnectedClient(ClientModel client)
         {
             _connectedClients.Add(client);
             Emit();
         }
-        public void RemoveConnectedClient(ClientInfoModel client)
+        public void RemoveConnectedClient(ClientModel client)
         {
             _connectedClients.Remove(client);
             Emit();
@@ -53,22 +52,22 @@ namespace RConsole.Editor
         /// <summary>
         /// 当前筛选的客户端
         /// </summary>
-        private ClientInfoModel _filterClientInfoModel = null;
-        public ClientInfoModel FilterClientInfoModel => _filterClientInfoModel;
-        public void SetFilterClientInfoModel(ClientInfoModel client)
+        private ClientModel _filterClientModel = null;
+        public ClientModel FilterClientModel => _filterClientModel;
+        public void SetFilterClientInfoModel(ClientModel client)
         {
-            _filterClientInfoModel = client;
+            _filterClientModel = client;
             Emit();
         }   
         
 
 
-        private readonly List<LogRecordModel> _items = new List<LogRecordModel>();
+        private readonly List<LogModel> _items = new List<LogModel>();
         private readonly object _lock = new object();
 
         public Action<RConsoleViewModel> OnModelChanged = null;
 
-        public void Add(LogRecordModel m)
+        public void Add(LogModel m)
         {
             lock (_lock)
             {
@@ -81,7 +80,7 @@ namespace RConsole.Editor
             Emit();
         }
 
-        public IReadOnlyList<LogRecordModel> Snapshot()
+        public IReadOnlyList<LogModel> Snapshot()
         {
             lock (_lock)
             {

@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 
-namespace RConsole.Editor
+namespace RConsole.Common
 {
     // 简单的主线程调度器：在 Editor 主循环中执行排队的操作
-    internal static class MainThreadDispatcher
+    public static class MainThreadDispatcher
     {
         private static readonly object _lock = new object();
         private static readonly Queue<Action> _queue = new Queue<Action>();

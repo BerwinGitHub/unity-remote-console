@@ -47,10 +47,19 @@
   <ItemGroup>
     <Compile Include="Assets/RemoteConsole/Common/Enums.cs" />
     <Compile Include="Assets/Script/Sample.cs" />
+    <Compile Include="Assets/RemoteConsole/Common/Entity/LogModel.cs" />
     <Compile Include="Assets/RemoteConsole/Runtime/Socket/RConsoleClient.cs" />
-    <Compile Include="Assets/RemoteConsole/Common/Entity/RConsoleModels.cs" />
+    <Compile Include="Assets/RemoteConsole/Common/MainThreadDispatcher.cs" />
+    <Compile Include="Assets/RemoteConsole/Common/Entity/ClientModel.cs" />
+    <Compile Include="Assets/RemoteConsole/Runtime/Handler/IHandler.cs" />
+    <Compile Include="Assets/RemoteConsole/Runtime/Handler/S2CLookinHandler.cs" />
+    <Compile Include="Assets/RemoteConsole/Common/Entity/IBinaryModelBase.cs" />
+    <Compile Include="Assets/RemoteConsole/Common/Entity/LookInModel.cs" />
     <Compile Include="Assets/RemoteConsole/Runtime/RCLog.cs" />
+    <Compile Include="Assets/RemoteConsole/Common/Entity/EnvelopeFactory.cs" />
     <Compile Include="Assets/RemoteConsole/Runtime/RCLogManager.cs" />
+    <Compile Include="Assets/RemoteConsole/Common/Entity/Envelope.cs" />
+    <Compile Include="Assets/RemoteConsole/Runtime/Handler/HandlerFactory.cs" />
     <None Include="Assets/TextMesh Pro/Shaders/TMPro.cginc" />
     <None Include="Assets/TextMesh Pro/Shaders/TMP_SDF-Mobile Overlay.shader" />
     <None Include="Assets/TextMesh Pro/Shaders/TMP_Bitmap.shader" />

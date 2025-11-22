@@ -37,7 +37,7 @@ namespace RConsole.Editor
             _styleError = styleError;
         }
 
-        public void DrawRow(Rect rowRect, LogRecordModel it, bool isSelected)
+        public void DrawRow(Rect rowRect, LogModel it, bool isSelected)
         {
             if (isSelected)
             {
@@ -64,7 +64,7 @@ namespace RConsole.Editor
             x += 80F;
 
             // IP
-            var ip = it.clientInfoModel == null ? "0.0.0.0" : it.clientInfoModel.address;
+            var ip = it.clientModel == null ? "0.0.0.0" : it.clientModel.address;
             GUI.Label(new Rect(x, rowRect.y, 100, rowRect.height), $"[{ip}]", _styleIp);
             x += 100F;
 

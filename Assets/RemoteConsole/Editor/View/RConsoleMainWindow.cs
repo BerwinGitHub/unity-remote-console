@@ -21,7 +21,7 @@ namespace RConsole.Editor
         private RConsoleListItemView _listItemView;
         private RConsoleDetailView _detailView;
         // 选中项（用于下半部分显示详情）
-        private LogRecordModel _selectedItem;
+        private LogModel _selectedItem;
         // 详情区域高度比例（0.2~0.8），用于调节下半部分高度
         private float _detailsHeightRatio = 0.5f;
         // 是否正在拖动分隔条调节高度
@@ -173,7 +173,7 @@ namespace RConsole.Editor
             // Server 按钮紧随其后，宽度不扩展
             var clients = LCLog.ViewModel.ConnectedClients;
             var text = $"连接设备({clients.Count})";
-            var filterClient = LCLog.ViewModel.FilterClientInfoModel;
+            var filterClient = LCLog.ViewModel.FilterClientModel;
             if (filterClient != null)
             {
                 text += $"[{filterClient.deviceName}]";
@@ -367,17 +367,17 @@ namespace RConsole.Editor
             }
         }
 
-        private bool PassFilter(LogRecordModel i)
+        private bool PassFilter(LogModel i)
         {
             if (!_showLog && i.level == LogType.Log) return false;
             if (!_showWarning && i.level == LogType.Warning) return false;
             if (!_showError && i.level >= LogType.Error) return false;
 
             // 客户端设备筛选
-            var filterClient = LCLog.ViewModel.FilterClientInfoModel;
+            var filterClient = LCLog.ViewModel.FilterClientModel;
             if (filterClient != null)
             {
-                var did = i.clientInfoModel?.deviceId;
+                var did = i.clientModel?.deviceId;
                 if (string.IsNullOrEmpty(did) || did != filterClient.deviceId) return false;
             }
 

@@ -17,7 +17,7 @@ namespace RConsole.Editor
         private readonly GUIStyle _styleStack;
         private readonly GUIStyle _styleLink;
         private Vector2 _scroll = Vector2.zero;
-        private LogRecordModel _selectedItem = null;
+        private LogModel _selectedItem = null;
 
         public RConsoleDetailView(GUIContent iconLog, GUIContent iconWarn, GUIContent iconErr, GUIStyle styleStack, GUIStyle styleLink)
         {
@@ -50,7 +50,7 @@ namespace RConsole.Editor
             _selectedItem = null;
         }
 
-        public void Draw(float detailHeight, LogRecordModel selectedItem)
+        public void Draw(float detailHeight, LogModel selectedItem)
         {
             _selectedItem = selectedItem;
             if (_selectedItem == null) return;
@@ -67,9 +67,9 @@ namespace RConsole.Editor
             
             // 设备
             var txt = "[/]";
-            if (_selectedItem.clientInfoModel != null)
+            if (_selectedItem.clientModel != null)
             {
-                txt = $"{_selectedItem.clientInfoModel.deviceName}({_selectedItem.clientInfoModel.deviceModel})";
+                txt = $"{_selectedItem.clientModel.deviceName}({_selectedItem.clientModel.deviceModel})";
             }
             EditorGUILayout.LabelField(txt, EditorStyles.miniLabel, GUILayout.Width(180));
             // 时间

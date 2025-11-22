@@ -20,7 +20,7 @@ namespace RConsole.Editor
             var menu = new GenericMenu();
 
             var clients = LCLog.ViewModel.ConnectedClients;
-            var currentFilter = LCLog.ViewModel.FilterClientInfoModel;
+            var currentFilter = LCLog.ViewModel.FilterClientModel;
 
             if (clients == null || clients.Count == 0)
             {

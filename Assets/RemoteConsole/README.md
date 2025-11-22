@@ -67,9 +67,7 @@ public class Example : MonoBehaviour
 
 - 录屏演示：`doc/screenrecord.mov`
 - 直接链接查看：[`doc/screenrecord.mov`](../../doc/screenrecord.mov)
-- 在支持 HTML5 的查看器中可内嵌预览：
-
-<video src="../../doc/screenrecord.mov" controls preload="metadata" style="max-width: 100%; height: auto;"></video>
+- 注意：GitHub 的 README 不支持内嵌 `<video>` 标签，且 `.mov` 在网页端兼容性较差。建议点击链接下载观看；如需在 README 中内嵌预览，建议转换为 GIF 并以图片方式引用。
 
 ---
 

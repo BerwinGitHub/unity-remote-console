@@ -36,7 +36,7 @@ namespace RConsole.Runtime
 
         private static void Send(LogType level, string message, string tag = "RCLog")
         {
-            var model = new LogRecordModel
+            var model = new LogModel
             {
                 timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 level = (LogType)(int)level,

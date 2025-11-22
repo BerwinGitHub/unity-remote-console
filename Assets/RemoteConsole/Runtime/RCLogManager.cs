@@ -1,5 +1,3 @@
-
-
 using System;
 using RConsole.Common;
 using UnityEngine;
@@ -27,26 +25,28 @@ namespace RConsole.Runtime
         public async void Connect(string ip, int port = 13337, string path = "/remote-console")
         {
             // 释放旧连接
-            _client?.Stop();
+            _client?.Disconnect();
 
             _client = new RConsoleClient
             {
-                EditorHost = ip,
-                EditorPort = port,
-                EditorPath = path
+                Host = ip,
+                Port = port,
+                Path = path
             };
             Debug.Log($"RCLogManager Connect to {ip}:{port}{path}");
             // 由 RCLogManager 自行决定是否捕获 Unity 日志，因此此处不启用捕获
-            await _client.StartAsync(captureUnityLogs: false);
+            await _client.Connect();
         }
 
         public async void Disconnect()
         {
             try
             {
-                _client?.Stop();
+                _client?.Disconnect();
             }
-            catch { }
+            catch
+            {
+            }
             finally
             {
                 _client = null;
@@ -86,9 +86,11 @@ namespace RConsole.Runtime
             try
             {
                 StopForwardingUnityLog();
-                _client?.Stop();
+                _client?.Disconnect();
             }
-            catch { }
+            catch
+            {
+            }
             finally
             {
                 _client = null;
@@ -100,7 +102,7 @@ namespace RConsole.Runtime
         /// </summary>
         private void OnUnityLogMessage(string logString, string stackTrace, LogType type)
         {
-            var lr = new LogRecordModel
+            var lr = new LogModel
             {
                 timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 level = type,
@@ -115,12 +117,12 @@ namespace RConsole.Runtime
         /// <summary>
         /// 发送业务日志到服务器。
         /// </summary>
-        public void SendLog(LogRecordModel logRecord)
+        public void SendLog(LogModel log)
         {
-            if (logRecord == null) return;
+            if (log == null) return;
             try
             {
-                _client?.EnqueueEnvelope(EnvelopeModel.FromLog(logRecord));
+                _client?.EnqueueEnvelope(new Envelope(EnvelopeKind.C2SLogRecord, log));
             }
             catch (Exception ex)
             {

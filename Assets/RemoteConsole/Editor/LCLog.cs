@@ -1,6 +1,5 @@
 using System;
 using RConsole.Common;
-using UnityEditor;
 using UnityEngine;
 
 namespace RConsole.Editor
@@ -41,7 +40,7 @@ namespace RConsole.Editor
 
         private static void Write(LogType level, string message, string tag = "RCLog")
         {
-            var model = new LogRecordModel
+            var model = new LogModel
             {
                 timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 level = (LogType)(int)level,

@@ -1,14 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using RConsole.Common;
-using UnityEngine;
-using WebSocketSharp;
 using WebSocketSharp.Server;
 
 namespace RConsole.Editor
@@ -43,7 +35,7 @@ namespace RConsole.Editor
                 // 使用 WebSocketSharp 启动服务器
                 _wsServer = new WebSocketServer(IPAddress.Any, Port);
                 var route = string.IsNullOrEmpty(Path) ? "/" : (Path.StartsWith("/") ? Path : "/" + Path);
-                _wsServer.AddWebSocketService<RConsoleBehaviour>(route);
+                _wsServer.AddWebSocketService<RConsoleConnection>(route);
                 _wsServer.Start();
 
                 IsStarted = true;

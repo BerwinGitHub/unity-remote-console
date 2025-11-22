@@ -8,12 +8,12 @@ using WebSocketSharp.Server;
 namespace RConsole.Editor
 {
     // 独立的 WebSocket 服务实现，直接在行为类中处理逻辑
-    internal class RConsoleBehaviour : WebSocketBehavior
+    internal class RConsoleConnection : WebSocketBehavior
     {
         public static RConsoleServer Server { get; private set; }
 
         private readonly object _lock = new object();
-        private ClientInfoModel _clientInfo = new ClientInfoModel();
+        private ClientModel _client = new ClientModel();
 
         protected override void OnOpen()
         {
@@ -23,13 +23,14 @@ namespace RConsole.Editor
             {
                 lock (_lock)
                 {
-                    _clientInfo = new ClientInfoModel
+                    _client = new ClientModel
                     {
                         connectID = id,
                         address = remoteStr,
                         connectedAt = DateTime.UtcNow
                     };
                 }
+
                 LCLog.Log($"[服务]客户端连接：{remoteStr} (id={id})");
             });
         }
@@ -61,8 +62,8 @@ namespace RConsole.Editor
             var id = ID;
             MainThreadDispatcher.Enqueue(() =>
             {
-                LCLog.ViewModel.RemoveConnectedClient(_clientInfo);
-                _clientInfo = null;
+                LCLog.ViewModel.RemoveConnectedClient(_client);
+                _client = null;
                 LCLog.Log($"[服务]客户端断开：id={id} ({e.Code})");
             });
         }
@@ -71,7 +72,7 @@ namespace RConsole.Editor
         {
             try
             {
-                var env = JsonUtility.FromJson<EnvelopeModel>(json);
+                var env = JsonUtility.FromJson<Envelope>(json);
                 if (env == null) return;
                 HandleEnvelope(sessionId, env);
             }
@@ -85,7 +86,7 @@ namespace RConsole.Editor
         {
             try
             {
-                EnvelopeModel env = null;
+                Envelope envelope = null;
 
 #if RC_USE_GOOGLE_PROTOBUF
                 // 使用 Google.Protobuf 生成的类型进行解析（需提供 csharp 生成文件与命名空间）
@@ -94,13 +95,10 @@ namespace RConsole.Editor
                 // env = ConvertFromProto(pbEnv);
                 R.LogWarning("RC_USE_GOOGLE_PROTOBUF 启用后请提供 ConvertFromProto 与生成的 C# 类型。");
 #else
-                env = EnvelopeModel.FromData(data);
+                envelope = new Envelope(data);
 #endif
 
-                if (env != null)
-                {
-                    HandleEnvelope(sessionId, env);
-                }
+                HandleEnvelope(sessionId, envelope);
             }
             catch (EndOfStreamException)
             {
@@ -112,28 +110,27 @@ namespace RConsole.Editor
             }
         }
 
-        private void HandleEnvelope(string sessionId, EnvelopeModel env)
+        private void HandleEnvelope(string sessionId, Envelope env)
         {
-            if (env.clientInfo != null)
+            if (env.Kind == EnvelopeKind.C2SHandshake)
             {
-                LCLog.Log(
-                    $"[服务]客户端握手：{env.clientInfo.deviceId} {env.clientInfo.platform} {env.clientInfo.appName} {env.clientInfo.appVersion}");
-                if (_clientInfo != null)
+                var clientInfo = (ClientModel)env.Model;
+                if (_client != null)
                 {
-                    env.clientInfo.address = _clientInfo.address;
-                    env.clientInfo.connectedAt = _clientInfo.connectedAt;
-                    env.clientInfo.connectID = _clientInfo.connectID;
-                    _clientInfo = env.clientInfo;
+                    _client.deviceName = clientInfo.deviceName;
+                    _client.deviceModel = clientInfo.deviceModel;
+                    _client.deviceId = clientInfo.deviceId;
+                    _client.platform = clientInfo.platform;
+                    _client.appName = clientInfo.appName;
+                    _client.appVersion = clientInfo.appVersion;
+                    _client.sessionId = clientInfo.sessionId;
                 }
-                LCLog.ViewModel.AddConnectedClient(env.clientInfo);
-                LCLog.Log($"[服务]握手成功：{env.clientInfo.deviceName} ");
+                LCLog.Log($"[服务]握手成功：{clientInfo.deviceName} ");
             }
-
-            if (env.log != null)
-            {
-                if (_clientInfo != null) env.log.clientInfoModel = _clientInfo;
-                LCLog.ViewModel.Add(env.log);
-            }
+            var handler = HandlerFactory.CreateHandler(env.Kind);
+            var respEnv = handler?.Handle(_client, env.Model);
+            if (respEnv == null) return;
+            Send(respEnv.ToBinary());
         }
     }
 }

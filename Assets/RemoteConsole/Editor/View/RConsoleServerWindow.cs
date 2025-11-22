@@ -13,7 +13,7 @@ namespace RConsole.Editor
         private int _port;
         private string[] _ips;
         private Vector2 _scroll;
-        private ClientInfoModel _selectedClient;
+        private ClientModel _selectedClient;
 
         private const string PrefKeyPort = "RemoteConsole.Port";
 
@@ -31,7 +31,7 @@ namespace RConsole.Editor
             _ips = NETUtils.GetIPv4Addresses();
             if (_server == null) _server = new RConsoleServer();
             _port = EditorPrefs.GetInt(PrefKeyPort, _server.Port);
-            _selectedClient = LCLog.ViewModel.FilterClientInfoModel;
+            _selectedClient = LCLog.ViewModel.FilterClientModel;
         }
 
         private void OnGUI()
