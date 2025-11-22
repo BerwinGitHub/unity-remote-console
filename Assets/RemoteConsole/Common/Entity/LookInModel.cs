@@ -4,17 +4,24 @@ using UnityEngine;
 
 namespace RConsole.Common
 {
-
     /// <summary>
     /// 请求查看界面
     /// </summary>
     public class LookInReqModel : IBinaryModelBase
     {
-
         /// <summary>
         /// 节点路径, / 表示根目录
         /// </summary>
         public string Path { get; set; } = string.Empty;
+
+        public LookInReqModel()
+        {
+        }
+
+        public LookInReqModel(string path)
+        {
+            Path = path;
+        }
 
         public override byte[] ToBinary()
         {
@@ -37,7 +44,6 @@ namespace RConsole.Common
     /// </summary>
     public class LookInRespModel : IBinaryModelBase
     {
-
         /// <summary>
         /// 节点名称
         /// </summary>
@@ -80,6 +86,7 @@ namespace RConsole.Common
                 {
                     bw.Write(child.ToBinary());
                 }
+
                 return ms.ToArray();
             }
         }

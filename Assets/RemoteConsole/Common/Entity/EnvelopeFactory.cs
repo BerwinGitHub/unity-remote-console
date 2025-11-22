@@ -12,8 +12,8 @@ namespace RConsole.Common
             {
                 EnvelopeKind.C2SHandshake => new ClientModel(),
                 EnvelopeKind.C2SLogRecord => new LogModel(),
-                EnvelopeKind.C2SLookin => new LookInReqModel(),
-                EnvelopeKind.S2CLookin => new LookInRespModel(),
+                EnvelopeKind.S2CLookin => new LookInReqModel(),
+                EnvelopeKind.C2SLookin => new LookInRespModel(),
                 _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
             };
         }

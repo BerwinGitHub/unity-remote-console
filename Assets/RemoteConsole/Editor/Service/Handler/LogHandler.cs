@@ -8,11 +8,12 @@ namespace RConsole.Editor
     /// </summary>
     public class LogHandler : IHandler
     {
-        public override Envelope Handle(ClientModel clientModel, IBinaryModelBase modelBase)
+        public override Envelope Handle(RConsoleConnection connection, IBinaryModelBase modelBase)
         {
+            var clientModel = connection.ClientModel;
             var log = (LogModel)modelBase;
             if (clientModel != null) log.clientModel = clientModel;
-            LCLog.ViewModel.Add(log);
+            RConsoleCtrl.Instance.Log(log);
             return null;
         }
     }

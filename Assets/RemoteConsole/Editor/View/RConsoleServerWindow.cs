@@ -31,14 +31,14 @@ namespace RConsole.Editor
             _ips = NETUtils.GetIPv4Addresses();
             if (_server == null) _server = new RConsoleServer();
             _port = EditorPrefs.GetInt(PrefKeyPort, _server.Port);
-            _selectedClient = LCLog.ViewModel.FilterClientModel;
+            _selectedClient = RConsoleCtrl.Instance.ViewModel.FilterClientModel;
         }
 
         private void OnGUI()
         {
             // 顶部展示已连接客户端
             EditorGUILayout.LabelField("已连接客户端", EditorStyles.boldLabel);
-            var clients = LCLog.ViewModel.ConnectedClients;
+            var clients = RConsoleCtrl.Instance.ViewModel.ConnectedClients;
             if (clients.Count == 0)
             {
                 EditorGUILayout.LabelField("无客户端连接", EditorStyles.miniLabel);
@@ -53,7 +53,7 @@ namespace RConsole.Editor
                     if (GUILayout.Button("显示全部日志", EditorStyles.miniButton, GUILayout.Width(100)))
                     {
                         _selectedClient = null;
-                        LCLog.ViewModel.SetFilterClientInfoModel(null);
+                        RConsoleCtrl.Instance.SetFilterClientInfoModel(null);
                     }
                 }
                 EditorGUILayout.EndHorizontal();
@@ -77,7 +77,7 @@ namespace RConsole.Editor
                         if (GUILayout.Button("只看此客户端", EditorStyles.miniButton, GUILayout.Width(100)))
                         {
                             _selectedClient = c;
-                            LCLog.ViewModel.SetFilterClientInfoModel(c);
+                            RConsoleCtrl.Instance.SetFilterClientInfoModel(c);
                         }
                     }
                     EditorGUILayout.EndHorizontal();

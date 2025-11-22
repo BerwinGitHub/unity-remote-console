@@ -19,8 +19,8 @@ namespace RConsole.Editor
             // 使用系统内置 GenericMenu 下拉菜单，获得与 Unity Console 相同的对齐与行为
             var menu = new GenericMenu();
 
-            var clients = LCLog.ViewModel.ConnectedClients;
-            var currentFilter = LCLog.ViewModel.FilterClientModel;
+            var clients = RConsoleCtrl.Instance.ViewModel.ConnectedClients;
+            var currentFilter = RConsoleCtrl.Instance.ViewModel.FilterClientModel;
 
             if (clients == null || clients.Count == 0)
             {
@@ -40,12 +40,12 @@ namespace RConsole.Editor
                         if (isSelected)
                         {
                             // 取消筛选：不选任何客户端即显示全部
-                            LCLog.ViewModel.SetFilterClientInfoModel(null);
+                            RConsoleCtrl.Instance.SetFilterClientInfoModel(null);
                         }
                         else
                         {
                             client.isFiltered = true;
-                            LCLog.ViewModel.SetFilterClientInfoModel(client);
+                            RConsoleCtrl.Instance.SetFilterClientInfoModel(client);
                         }
                         owner.Repaint();
                     });
@@ -59,7 +59,7 @@ namespace RConsole.Editor
         {
             base.OnGUI(rect);
             EditorGUILayout.BeginVertical();
-            var clients = LCLog.ViewModel.ConnectedClients;
+            var clients = RConsoleCtrl.Instance.ViewModel.ConnectedClients;
             if (clients.Count == 0)
             {
                 EditorGUILayout.LabelField("暂无无客户端连接", EditorStyles.miniLabel);
@@ -80,13 +80,13 @@ namespace RConsole.Editor
                             c.isFiltered = false;
                         }
                         client.isFiltered = true;
-                        LCLog.ViewModel.SetFilterClientInfoModel(client);
+                        RConsoleCtrl.Instance.SetFilterClientInfoModel(client);
                         hasFiltered = true;
                     }
                 }
                 if (!hasFiltered)
                 {
-                    LCLog.ViewModel.SetFilterClientInfoModel(null);
+                    RConsoleCtrl.Instance.SetFilterClientInfoModel(null);
                 }
             }
             EditorGUILayout.EndVertical();

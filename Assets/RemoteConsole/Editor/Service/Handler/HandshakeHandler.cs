@@ -8,11 +8,12 @@ namespace RConsole.Editor
     /// </summary>
     public class HandshakeHandler : IHandler
     {
-        public override Envelope Handle(ClientModel clientInfo, IBinaryModelBase modelBase)
+        public override Envelope Handle(RConsoleConnection connection, IBinaryModelBase modelBase)
         {
+            var clientInfo = connection.ClientModel;
             LCLog.Log(
                 $"[服务]客户端握手：{clientInfo.deviceId} {clientInfo.platform} {clientInfo.appName} {clientInfo.appVersion}");
-            LCLog.ViewModel.AddConnectedClient(clientInfo);
+            RConsoleCtrl.Instance.AddConnectedClient(connection);
             return null;
         }
     }

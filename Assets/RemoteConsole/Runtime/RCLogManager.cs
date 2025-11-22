@@ -44,8 +44,9 @@ namespace RConsole.Runtime
             {
                 _client?.Disconnect();
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.LogWarning($"RCLogManager 断开连接时发生异常: {ex.Message}");
             }
             finally
             {

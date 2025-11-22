@@ -39,7 +39,7 @@ namespace RConsole.Editor
                 _wsServer.Start();
 
                 IsStarted = true;
-                LCLog.ViewModel.SetServerStarted(IsStarted);
+                RConsoleCtrl.Instance.SetServerStarted(IsStarted);
                 LCLog.Log($"服务启动成功，请在输入下列地址连接：");
                 var ips = NETUtils.GetIPv4Addresses();
                 for (int i = 0; i < ips.Length; i++)
@@ -62,7 +62,7 @@ namespace RConsole.Editor
             {
                 try { _wsServer?.Stop(); } catch { }
                 _wsServer = null;
-                LCLog.ViewModel.ServerDisconnected();
+                RConsoleCtrl.Instance.ServerDisconnected();
             }
             catch (Exception ex)
             {
@@ -71,7 +71,7 @@ namespace RConsole.Editor
             finally
             {
                 IsStarted = false;
-                LCLog.ViewModel.SetServerStarted(IsStarted);
+                RConsoleCtrl.Instance.SetServerStarted(IsStarted);
                 LCLog.Log("RemoteConsole Server stopped");
             }
         }

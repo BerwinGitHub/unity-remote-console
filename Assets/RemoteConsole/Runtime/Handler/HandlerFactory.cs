@@ -10,7 +10,7 @@ namespace RConsole.Runtime
             switch (kind)
             {
                 case EnvelopeKind.S2CLookin:
-                    return new S2CLookinHandler();
+                    return new LookinHandler();
                 default:
                     return null;
             }

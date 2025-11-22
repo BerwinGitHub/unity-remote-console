@@ -8,12 +8,11 @@ using WebSocketSharp.Server;
 namespace RConsole.Editor
 {
     // 独立的 WebSocket 服务实现，直接在行为类中处理逻辑
-    internal class RConsoleConnection : WebSocketBehavior
+    public class RConsoleConnection : WebSocketBehavior
     {
-        public static RConsoleServer Server { get; private set; }
-
         private readonly object _lock = new object();
         private ClientModel _client = new ClientModel();
+        public ClientModel ClientModel => _client;
 
         protected override void OnOpen()
         {
@@ -62,7 +61,7 @@ namespace RConsole.Editor
             var id = ID;
             MainThreadDispatcher.Enqueue(() =>
             {
-                LCLog.ViewModel.RemoveConnectedClient(_client);
+                RConsoleCtrl.Instance.RemoveConnectedClient(this);
                 _client = null;
                 LCLog.Log($"[服务]客户端断开：id={id} ({e.Code})");
             });
@@ -128,9 +127,14 @@ namespace RConsole.Editor
                 LCLog.Log($"[服务]握手成功：{clientInfo.deviceName} ");
             }
             var handler = HandlerFactory.CreateHandler(env.Kind);
-            var respEnv = handler?.Handle(_client, env.Model);
+            var respEnv = handler?.Handle(this, env.Model);
             if (respEnv == null) return;
             Send(respEnv.ToBinary());
+        }
+
+        public void SendEnvelop(Envelope env)
+        {
+            Send(env.ToBinary());
         }
     }
 }

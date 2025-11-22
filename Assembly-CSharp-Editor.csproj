@@ -53,6 +53,7 @@
     <Compile Include="Assets/RemoteConsole/Editor/Service/RConsoleServer.cs" />
     <Compile Include="Assets/RemoteConsole/Editor/Service/Handler/IHandler.cs" />
     <Compile Include="Assets/RemoteConsole/Editor/Service/Handler/HandlerFactory.cs" />
+    <Compile Include="Assets/RemoteConsole/Editor/Ctrl/RConsoleCtrl.cs" />
     <Compile Include="Assets/RemoteConsole/Editor/View/RConsoleClientPop.cs" />
     <Compile Include="Assets/RemoteConsole/Editor/View/RConsoleMainWindow.cs" />
     <Compile Include="Assets/RemoteConsole/Editor/Service/RConsoleConnection.cs" />

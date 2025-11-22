@@ -9,7 +9,7 @@ namespace RConsole.Editor
 {
     public class RConsoleMainWindow : EditorWindow
     {
-        private static RConsoleMainWindow selfWindows = null;
+        private static RConsoleMainWindow _selfWindows = null;
         private Vector2 _scroll;
         private string _search = string.Empty;
         private bool _showLog = true, _showWarning = true, _showError = true;
@@ -26,7 +26,6 @@ namespace RConsole.Editor
         private float _detailsHeightRatio = 0.5f;
         // 是否正在拖动分隔条调节高度
         private bool _isResizingDetails = false;
-        private RConsoleServer _server;
 
         [MenuItem("Window/Remote Console")]
         public static void ShowWindow()
@@ -36,25 +35,25 @@ namespace RConsole.Editor
             win.Show();
         }
 
-        private void Awake() {
+        private void Awake()
+        {
         }
 
-        private void OnEnable() 
+        private void OnEnable()
         {
-            _server ??= new RConsoleServer();
-            LCLog.ViewModel.OnModelChanged += OnModelChanged;
+            RConsoleCtrl.Instance.ViewModel.OnModelChanged += OnModelChanged;
             var wins = Resources.FindObjectsOfTypeAll<RConsoleMainWindow>();
             if (wins != null && wins.Length > 0)
             {
-                selfWindows = wins[0];
+                _selfWindows = wins[0];
             }
             _detailView?.OnEnable();
         }
 
         private void OnDisable()
         {
-            LCLog.ViewModel.OnModelChanged -= OnModelChanged;
-            selfWindows = null;
+            RConsoleCtrl.Instance.ViewModel.OnModelChanged -= OnModelChanged;
+            _selfWindows = null;
             _selectedItem = null;
             _detailView?.OnDisable();
         }
@@ -67,8 +66,8 @@ namespace RConsole.Editor
         // 在收到新日志时，如果窗口已打开则请求重绘（不抢占焦点）
         public static void RefreshIfOpen()
         {
-            if (selfWindows == null) return;
-            selfWindows.Repaint();
+            if (_selfWindows == null) return;
+            _selfWindows.Repaint();
         }
 
         private void Init()
@@ -144,7 +143,7 @@ namespace RConsole.Editor
             // 显示图标 + 文本 "Clear"
             if (GUILayout.Button(new GUIContent("Clear", iconClear.image, "Clear"), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false)))
             {
-                LCLog.ViewModel.Clear();
+                RConsoleCtrl.Instance.ClearLog();
                 // 清空面板上的值
                 _selectedItem = null;
                 _detailView?.Clear();
@@ -152,28 +151,28 @@ namespace RConsole.Editor
             }
 
             // Play 按钮
-            var isServerStarted = LCLog.ViewModel.IsServerStarted;
+            var isServerStarted = RConsoleCtrl.Instance.ViewModel.IsServerStarted;
             var playText = isServerStarted ? "关闭服务" : "启动服务";
             var ips = NETUtils.GetIPv4Addresses();
             var tips = $"服务地址: {string.Join(", ", ips)}";
             var icon = EditorGUIUtility.IconContent(isServerStarted ? "PauseButton" : "d_PlayButton");
-            if (GUILayout.Button(new GUIContent(playText,icon.image, tips), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false)))
+            if (GUILayout.Button(new GUIContent(playText, icon.image, tips), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false)))
             {
                 // 播放按钮点击事件
                 if (isServerStarted)
                 {
-                    _server.Stop();
+                    RConsoleCtrl.Instance.Disconnect();
                 }
                 else
                 {
-                    _server.Start();
+                    RConsoleCtrl.Instance.Connect();
                 }
             }
 
             // Server 按钮紧随其后，宽度不扩展
-            var clients = LCLog.ViewModel.ConnectedClients;
+            var clients = RConsoleCtrl.Instance.ViewModel.ConnectedClients;
             var text = $"连接设备({clients.Count})";
-            var filterClient = LCLog.ViewModel.FilterClientModel;
+            var filterClient = RConsoleCtrl.Instance.ViewModel.FilterClientModel;
             if (filterClient != null)
             {
                 text += $"[{filterClient.deviceName}]";
@@ -184,13 +183,25 @@ namespace RConsole.Editor
                 var serverBtnRect = GUILayoutUtility.GetLastRect();
                 RConsoleClientPop.Open(serverBtnRect, this);
             }
+            // 添加个截图按钮，使用图标 "console.cameraicon"
+            Texture2D eyeOpen  = EditorGUIUtility.FindTexture("animationvisibilitytoggleon");
+            var iconCamera = EditorGUIUtility.IconContent("Camera Icon");
+            if (GUILayout.Button(new GUIContent(eyeOpen, "【Lookin】查看连接设备的实时界面层级"), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false)))
+            {
+                RConsoleCtrl.Instance.FetchLookin();
+            }
+            // 文件夹图标
+            var iconFolder = EditorGUIUtility.IconContent("Folder");
+            if (GUILayout.Button(new GUIContent(iconFolder.image, "【File Browser】查看连接设备的沙盒文件"), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false)))
+            {
+            }
 
             // 搜索框紧随其后，宽度固定为 200
             var searchRect = GUILayoutUtility.GetRect(200, EditorGUIUtility.singleLineHeight, EditorStyles.toolbarSearchField, GUILayout.Width(200), GUILayout.ExpandWidth(false));
             _search = _searchField.OnGUI(searchRect, _search);
 
             // 计算各类型日志数量，用图标+数量显示
-            var items = LCLog.ViewModel.Snapshot();
+            var items = RConsoleCtrl.Instance.ViewModel.Snapshot();
             var countLog = items.Count(i => i.level == LogType.Log);
             var countWarn = items.Count(i => i.level == LogType.Warning);
             var countErr = items.Count(i => i.level == LogType.Error);
@@ -209,8 +220,9 @@ namespace RConsole.Editor
             _showLog = GUILayout.Toggle(_showLog, new GUIContent(countLog.ToString(), iconLog.image, "Log"), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false));
             _showWarning = GUILayout.Toggle(_showWarning, new GUIContent(countWarn.ToString(), iconWarn.image, "Warning"), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false));
             _showError = GUILayout.Toggle(_showError, new GUIContent(countErr.ToString(), iconErr.image, "Error"), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false));
-            // Clear 按钮已置于最左侧
 
+
+            // Clear 按钮已置于最左侧
             // 右侧添加“始终滚动到底部”图标开关（带回退，避免空引用）
             GUILayout.FlexibleSpace();
             var iconAutoBottom = EditorGUIUtility.IconContent("dropdown");
@@ -230,7 +242,7 @@ namespace RConsole.Editor
 
         private void DrawList()
         {
-            var items = LCLog.ViewModel.Snapshot();
+            var items = RConsoleCtrl.Instance.ViewModel.Snapshot();
             var filtered = items.Where(i => PassFilter(i)).ToArray();
 
             bool hasSelection = _selectedItem != null;
@@ -374,7 +386,7 @@ namespace RConsole.Editor
             if (!_showError && i.level >= LogType.Error) return false;
 
             // 客户端设备筛选
-            var filterClient = LCLog.ViewModel.FilterClientModel;
+            var filterClient = RConsoleCtrl.Instance.ViewModel.FilterClientModel;
             if (filterClient != null)
             {
                 var did = i.clientModel?.deviceId;
