@@ -59,34 +59,34 @@ namespace RConsole.Editor
         public void FetchLookin()
         {
             var connection = GetSelectConnection();
-            var body = new LookInViewModel { Path = "/" };
-            connection?.Reqeust(EnvelopeKind.S2CLookin, (byte)SubLookIn.LookIn, body, envelope =>
+            var body = new StringModel("/");
+            connection?.Reqeust(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, body, model =>
             {
-                var lookInRespModel = envelope.Model as LookInViewModel;
+                var lookInRespModel = model as LookInViewModel;
                 if (lookInRespModel == null) return;
                 LCLog.Log("服务端请求 Lookin 数据成功返回");
                 BringLookInToEditor(lookInRespModel);
             });
         }
 
-        public void FetchDirectory(FileModel model)
+        public void FetchDirectory(FileModel body)
         {
             var connection = GetSelectConnection();
-            connection?.Reqeust(EnvelopeKind.S2CFile, (byte)SubFile.FetchDirectory, model, envelope =>
+            connection?.Reqeust(EnvelopeKind.S2CFile, (byte)SubFile.FetchDirectory, body, model =>
             {
-                var resp = envelope.Model as FileModel;
+                var resp = model as FileModel;
                 if (resp == null) return;
                 UpdateFileBrowser(resp);
             });
         }
 
 
-        public void RequestFileMD5(FileModel model)
+        public void RequestFileMD5(FileModel body)
         {
             var connection = GetSelectConnection();
-            connection?.Reqeust(EnvelopeKind.S2CFile, (byte)SubFile.MD5, model, envelope =>
+            connection?.Reqeust(EnvelopeKind.S2CFile, (byte)SubFile.MD5, body, model =>
             {
-                var resp = envelope.Model as FileModel;
+                var resp = model as FileModel;
                 if (resp == null) return;
                 OnFileMD5Changed?.Invoke(resp);
             });
@@ -120,9 +120,9 @@ namespace RConsole.Editor
 
         #region 网络相关 - 被动监听回调
 
-        public Envelope OnLogReceived(RConsoleConnection connection, Envelope envelope)
+        public Envelope OnLogReceived(RConsoleConnection connection, IBinaryModelBase model)
         {
-            var logModel = envelope.Model as LogModel;
+            var logModel = model as LogModel;
             if (logModel == null) return null;
             var clientModel = connection.ClientModel;
             if (clientModel != null) logModel.clientModel = clientModel;
@@ -130,10 +130,10 @@ namespace RConsole.Editor
             return null;
         }
 
-        public Envelope OnHandshakeReceived(RConsoleConnection connection, Envelope envelope)
+        public Envelope OnHandshakeReceived(RConsoleConnection connection, IBinaryModelBase model)
         {
-            var model = envelope.Model as ClientModel;
-            AddConnectedClient(model);
+            var handshakeModel = model as ClientModel;
+            AddConnectedClient(handshakeModel);
             return null;
         }
 

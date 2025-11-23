@@ -53,6 +53,7 @@
     <Compile Include="Assets/RemoteConsole/Common/Entity/FileModel.cs" />
     <Compile Include="Assets/RemoteConsole/Common/MainThreadDispatcher.cs" />
     <Compile Include="Assets/RemoteConsole/Common/Entity/ClientModel.cs" />
+    <Compile Include="Assets/RemoteConsole/Common/EnvelopResolver.cs" />
     <Compile Include="Assets/RemoteConsole/Runtime/Handler/IHandler.cs" />
     <Compile Include="Assets/RemoteConsole/Common/Entity/IBinaryModelBase.cs" />
     <Compile Include="Assets/RemoteConsole/Common/Entity/LookInModel.cs" />

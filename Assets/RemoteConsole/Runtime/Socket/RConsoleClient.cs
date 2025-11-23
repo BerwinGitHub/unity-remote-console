@@ -26,12 +26,13 @@ namespace RConsole.Runtime
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        public event Action<Envelope> ServerEnvelopeReceived;
+        public event Action<Envelope, IBinaryModelBase> ServerEnvelopeReceived;
         public event Action<string> ServerTextReceived;
 
-        private readonly Dictionary<int, Action<Envelope>> _requestHandlers = new Dictionary<int, Action<Envelope>>();
+        private readonly Dictionary<int, Action<IBinaryModelBase>> _requestHandlers =
+            new Dictionary<int, Action<IBinaryModelBase>>();
 
-        public delegate Envelope BroadcastHandler(Envelope env);
+        public delegate IBinaryModelBase BroadcastHandler(IBinaryModelBase model);
 
         private readonly Dictionary<string, List<BroadcastHandler>> _broadcastHandlers =
             new Dictionary<string, List<BroadcastHandler>>();
@@ -46,6 +47,7 @@ namespace RConsole.Runtime
             }
 
             HandlerFactory.OnEnable();
+            EnvelopResolver.OnEnable();
 
             SendHandshake();
             // 启动发送循环
@@ -68,7 +70,7 @@ namespace RConsole.Runtime
                 appVersion = Application.version,
                 sessionId = _sessionId
             };
-            Send(new Envelope(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, hs));
+            Send(new Envelope(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, hs.ToBinary()));
         }
 
         public void Disconnect()
@@ -77,6 +79,7 @@ namespace RConsole.Runtime
             {
                 _ws?.Dispose();
                 HandlerFactory.OnDisable();
+                EnvelopResolver.OnDisable();
             }
             catch (Exception ex)
             {
@@ -192,8 +195,19 @@ namespace RConsole.Runtime
 #else
                             var env = new Envelope(data);
 #endif
-                            HandleServerEnvelope(env);
-                            ServerEnvelopeReceived?.Invoke(env);
+                            IBinaryModelBase model;
+                            if (env.IsResponse)
+                            {
+                                model = EnvelopResolver.GetResponse(env.Kind, env.SubKind);
+                            }
+                            else
+                            {
+                                model = EnvelopResolver.GetRequest(env.Kind, env.SubKind);
+                            }
+                            model.FromBinary(env.Data);
+
+                            HandleServerEnvelope(env, model);
+                            ServerEnvelopeReceived?.Invoke(env, model);
                         });
                     }
                     else if (msgType == WebSocketMessageType.Text)
@@ -228,25 +242,30 @@ namespace RConsole.Runtime
         /// 处理服务器发送的 Envelope。
         /// </summary>
         /// <param name="env">服务器发送的 Envelope</param>
-        private void HandleServerEnvelope(Envelope env)
+        private void HandleServerEnvelope(Envelope env, IBinaryModelBase model)
         {
-            var id = env.Id;
+            var id = env.SeqId;
             if (_requestHandlers.TryGetValue(id, out var handler))
             {
-                handler?.Invoke(env);
+                handler?.Invoke(model);
                 _requestHandlers.Remove(id);
                 return;
             }
 
-            var key = $"{env.Kind}_{env.SubCommandId}";
+            var key = $"{env.Kind}_{env.SubKind}";
             if (_broadcastHandlers.TryGetValue(key, out var handlers))
             {
                 foreach (var h in handlers)
                 {
-                    var data = h?.Invoke(env);
+                    var data = h?.Invoke(model);
                     if (data != null)
                     {
-                        Send(data);
+                        var resp = new Envelope(env.Kind, env.SubKind, data.ToBinary())
+                        {
+                            SeqId = env.SeqId,
+                            IsResponse = true
+                        };
+                        Send(resp);
                     }
                 }
             }
@@ -258,12 +277,12 @@ namespace RConsole.Runtime
         }
 
         public void Reqeust(EnvelopeKind kind, byte subCommandId, IBinaryModelBase data,
-            Action<Envelope> handler = null)
+            Action<IBinaryModelBase> handler = null)
         {
-            var env = new Envelope(kind, subCommandId, data);
+            var env = new Envelope(kind, subCommandId, data.ToBinary());
             if (handler != null)
             {
-                _requestHandlers[env.Id] = handler;
+                _requestHandlers[env.SeqId] = handler;
             }
 
             Send(env);
@@ -306,7 +325,7 @@ namespace RConsole.Runtime
 
         private void Emit(Envelope env)
         {
-            var key = $"{env.Kind}_{env.SubCommandId}";
+            var key = $"{env.Kind}_{env.SubKind}";
             if (_broadcastHandlers.ContainsKey(key))
             {
                 var handlers = _broadcastHandlers[key];

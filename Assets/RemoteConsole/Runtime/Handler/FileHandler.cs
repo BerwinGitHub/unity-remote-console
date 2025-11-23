@@ -19,27 +19,26 @@ namespace RConsole.Runtime
             RConsoleCtrl.Instance.WebSocket.Off(EnvelopeKind.S2CFile, (byte)SubFile.MD5, OnFetchMD5);
         }
 
-        private Envelope OnFetchDirectory(Envelope env)
+        private IBinaryModelBase OnFetchDirectory(IBinaryModelBase model)
         {
-            var req = (FileModel)env.Model;
+            var req = (FileModel)model;
             var path = req.Path;
             path = path.Replace(Application.persistentDataPath, "");
             path = Application.persistentDataPath + path;
             var root = BuildTree(path);
             root.Id = req.Id;
-            env.Model = root;
-            return env;
+            return root;
         }
 
-        private Envelope OnFetchMD5(Envelope env)
+        private IBinaryModelBase OnFetchMD5(IBinaryModelBase model)
         {
-            var req = (FileModel)env.Model;
+            var req = (FileModel)model;
             var path = req.Path;
             path = path.Replace(Application.persistentDataPath, "");
             path = Application.persistentDataPath + path;
             var md5 = SafeGetFileMD5(path);
             req.MD5 = md5;
-            return env;
+            return req;
         }
 
         private string SafeGetFileMD5(string path)

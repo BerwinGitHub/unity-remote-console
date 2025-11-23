@@ -6,9 +6,7 @@ namespace RConsole.Common
     {
         C2SHandshake = 1,
         C2SLog = 2,
-        C2SLookin = 3,
-        S2CLookin = 4,
-        C2SFile = 5,
+        S2CLookIn = 4,
         S2CFile = 6,
     }
 

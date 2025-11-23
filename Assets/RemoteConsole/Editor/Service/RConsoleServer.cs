@@ -17,10 +17,10 @@ namespace RConsole.Editor
 
         private WebSocketServer _wsServer;
 
-        public delegate Envelope BroadcastHandler(RConsoleConnection connection, Envelope env);
+        public delegate IBinaryModelBase BroadcastHandler(RConsoleConnection connection, IBinaryModelBase model);
 
-        public static Dictionary<string, List<RConsoleServer.BroadcastHandler>> _broadcastHandlers =
-            new Dictionary<string, List<RConsoleServer.BroadcastHandler>>();
+        public static Dictionary<string, List<BroadcastHandler>> _broadcastHandlers =
+            new Dictionary<string, List<BroadcastHandler>>();
 
         public static Dictionary<string, RConsoleConnection> Connections = new Dictionary<string, RConsoleConnection>();
 
@@ -45,6 +45,7 @@ namespace RConsole.Editor
 
                 IsStarted = true;
                 RConsoleCtrl.Instance.SetServerStarted(IsStarted);
+                EnvelopResolver.OnEnable();
                 LCLog.Log($"服务启动成功，请在输入下列地址连接：");
                 var ips = NETUtils.GetIPv4Addresses();
                 for (int i = 0; i < ips.Length; i++)
@@ -84,6 +85,7 @@ namespace RConsole.Editor
             {
                 IsStarted = false;
                 RConsoleCtrl.Instance.SetServerStarted(IsStarted);
+                EnvelopResolver.OnDisable();
                 LCLog.Log("RemoteConsole Server stopped");
             }
         }
@@ -124,20 +126,24 @@ namespace RConsole.Editor
             }
         }
 
-        public static void Emit(RConsoleConnection connection, Envelope env)
+        public static void Emit(RConsoleConnection connection, Envelope env, IBinaryModelBase model)
         {
-            var key = $"{env.Kind}_{env.SubCommandId}";
-            if (_broadcastHandlers.ContainsKey(key))
+            var key = $"{env.Kind}_{env.SubKind}";
+            if (_broadcastHandlers.TryGetValue(key, out var handlers))
             {
-                var handlers = _broadcastHandlers[key];
                 if (handlers != null)
                 {
                     foreach (var handler in handlers)
                     {
-                        var data = handler?.Invoke(connection, env);
+                        var data = handler?.Invoke(connection, model);
                         if (data != null)
                         {
-                            connection.SendEnvelop(data);
+                            var resp = new Envelope(env.Kind, env.SubKind, data.ToBinary())
+                            {
+                                SeqId = env.SeqId,
+                                IsResponse = true
+                            };
+                            connection.SendEnvelop(resp);
                         }
                     }
                 }

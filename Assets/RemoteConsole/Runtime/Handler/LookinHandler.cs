@@ -8,20 +8,19 @@ namespace RConsole.Runtime
     {
         public override void OnEnable()
         {
-            RConsoleCtrl.Instance.WebSocket.On(EnvelopeKind.S2CLookin, (byte)SubLookIn.LookIn, OnLookIn);
+            RConsoleCtrl.Instance.WebSocket.On(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, OnLookIn);
         }
 
         public override void OnDisable()
         {
-            RConsoleCtrl.Instance.WebSocket.Off(EnvelopeKind.S2CLookin, (byte)SubLookIn.LookIn, OnLookIn);
+            RConsoleCtrl.Instance.WebSocket.Off(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, OnLookIn);
         }
 
-        private Envelope OnLookIn(Envelope env)
+        private IBinaryModelBase OnLookIn(IBinaryModelBase model)
         {
-            var req = (LookInViewModel)env.Model;
-            var root = BuildTree(req.Path);
-            env.Model = root;
-            return env;
+            var req = (StringModel)model;
+            var root = BuildTree(req.Value);
+            return root;
         }
 
         private LookInViewModel BuildTree(string path)

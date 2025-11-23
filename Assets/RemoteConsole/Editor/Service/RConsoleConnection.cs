@@ -15,7 +15,8 @@ namespace RConsole.Editor
         private ClientModel _client = new ClientModel();
         public ClientModel ClientModel => _client;
 
-        private readonly Dictionary<int, Action<Envelope>> _requestHandlers = new Dictionary<int, Action<Envelope>>();
+        private readonly Dictionary<int, Action<IBinaryModelBase>> _requestHandlers =
+            new Dictionary<int, Action<IBinaryModelBase>>();
 
         private readonly Dictionary<string, List<RConsoleServer.BroadcastHandler>> _broadcastHandlers =
             new Dictionary<string, List<RConsoleServer.BroadcastHandler>>();
@@ -82,7 +83,9 @@ namespace RConsole.Editor
             {
                 var env = JsonUtility.FromJson<Envelope>(json);
                 if (env == null) return;
-                HandleEnvelope(sessionId, env);
+                var model = EnvelopResolver.GetRequest(env.Kind, env.SubKind);
+                model.FromBinary(env.Data);
+                HandleEnvelope(sessionId, env, model);
             }
             catch (Exception ex)
             {
@@ -105,8 +108,19 @@ namespace RConsole.Editor
 #else
                 envelope = new Envelope(data);
 #endif
+                IBinaryModelBase model;
+                if (envelope.IsResponse)
+                {
+                    model = EnvelopResolver.GetResponse(envelope.Kind, envelope.SubKind);
+                }
+                else
+                {
+                    model = EnvelopResolver.GetRequest(envelope.Kind, envelope.SubKind);
+                }
+                model.FromBinary(envelope.Data);
 
-                HandleEnvelope(sessionId, envelope);
+
+                HandleEnvelope(sessionId, envelope, model);
             }
             catch (EndOfStreamException)
             {
@@ -118,11 +132,11 @@ namespace RConsole.Editor
             }
         }
 
-        private void HandleEnvelope(string sessionId, Envelope env)
+        private void HandleEnvelope(string sessionId, Envelope env, IBinaryModelBase model)
         {
             if (env.Kind == EnvelopeKind.C2SHandshake)
             {
-                var clientInfo = (ClientModel)env.Model;
+                var clientInfo = (ClientModel)model;
                 if (_client != null)
                 {
                     _client.deviceName = clientInfo.deviceName;
@@ -141,15 +155,15 @@ namespace RConsole.Editor
                 LCLog.Log($"[服务]握手成功：{clientInfo.deviceName} ");
             }
 
-            var id = env.Id;
+            var id = env.SeqId;
             if (_requestHandlers.TryGetValue(id, out var handler))
             {
-                handler?.Invoke(env);
+                handler?.Invoke(model);
                 _requestHandlers.Remove(id);
                 return;
             }
 
-            RConsoleServer.Emit(this, env);
+            RConsoleServer.Emit(this, env, model);
 
 
             // var handler = HandlerFactory.CreateHandler(env.Kind);
@@ -163,12 +177,13 @@ namespace RConsole.Editor
             Send(env.ToBinary());
         }
 
-        public void Reqeust(EnvelopeKind kind, byte subCommandId, IBinaryModelBase data, Action<Envelope> handler)
+        public void Reqeust(EnvelopeKind kind, byte subCommandId, IBinaryModelBase data,
+            Action<IBinaryModelBase> handler)
         {
-            var env = new Envelope(kind, subCommandId, data);
+            var env = new Envelope(kind, subCommandId, data.ToBinary());
             if (handler != null)
             {
-                _requestHandlers[env.Id] = handler;
+                _requestHandlers[env.SeqId] = handler;
             }
 
             Send(env.ToBinary());

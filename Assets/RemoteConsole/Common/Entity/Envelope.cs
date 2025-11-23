@@ -1,33 +1,48 @@
 using System;
 using System.IO;
 using System.Text;
+using UnityEngine.Serialization;
 
 namespace RConsole.Common
 {
-
     [Serializable]
     public class Envelope : IBinaryModelBase
     {
 
         /// <summary>
+        /// seq 下表记录，用于响应消息匹配
+        /// </summary>
+        public static int SeqIncrement = 0;
+
+        /// <summary>
         /// 消息ID
         /// </summary>
-        public int Id;
+        public int SeqId;
+
+        /// <summary>
+        /// 是否是响应消息
+        /// </summary>
+        public bool IsResponse;
 
         /// <summary>
         /// 消息类型
         /// </summary>
         public EnvelopeKind Kind;
-        
+
         /// <summary>
         /// 对应模块子命令
         /// </summary>
-        public byte SubCommandId;
+        public byte SubKind;
 
         /// <summary>
-        /// 
+        /// 消息数据
         /// </summary>
-        public IBinaryModelBase Model = null;
+        // public IBinaryModelBase Model = null;
+
+        /// <summary>
+        /// 消息数据
+        /// </summary>
+        public byte[] Data;
 
         public Envelope(byte[] data)
         {
@@ -38,22 +53,25 @@ namespace RConsole.Common
             }
         }
 
-        public Envelope(EnvelopeKind kind, byte subCommandId, IBinaryModelBase model)
+        public Envelope(EnvelopeKind kind, byte subKind, byte[] data)
         {
             // 随机生成一个不重复的 id
-            Id = Guid.NewGuid().GetHashCode();
+            SeqId = GetNextSeqId();
             Kind = kind;
-            SubCommandId = subCommandId;
-            Model = model;
+            SubKind = subKind;
+            Data = data;
+            // Model = model;
         }
-        
+
         public override void FromBinary(BinaryReader br)
         {
-            Id = br.ReadInt32();
+            SeqId = br.ReadInt32();
+            IsResponse = br.ReadBoolean();
             Kind = (EnvelopeKind)br.ReadByte();
-            SubCommandId = br.ReadByte();
-            Model = EnvelopeFactory.Create(Kind);
-            Model.FromBinary(br);
+            SubKind = br.ReadByte();
+            Data = br.ReadBytes((int)(br.BaseStream.Length - br.BaseStream.Position));
+            // Model = EnvelopeFactory.Create(Kind);
+            // Model.FromBinary(br);
         }
 
         public override byte[] ToBinary()
@@ -61,13 +79,26 @@ namespace RConsole.Common
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms, Encoding.UTF8))
             {
-                bw.Write(Id);
+                bw.Write(SeqId);
+                bw.Write(IsResponse);
                 bw.Write((byte)Kind);
-                bw.Write(SubCommandId);
-                var bytes = Model.ToBinary();
-                bw.Write(bytes);
+                bw.Write(SubKind);
+                bw.Write(Data);
+                // var bytes = Model.ToBinary();
+                // bw.Write(bytes);
                 return ms.ToArray();
             }
+        }
+
+        /// <summary>
+        /// 获取下一个 seq id
+        /// </summary>
+        /// <returns></returns>
+        public static int GetNextSeqId()
+        {
+            // 每次递增 1，越界后从 0 开始
+            SeqIncrement = (SeqIncrement + 1) % int.MaxValue;
+            return SeqIncrement;
         }
     }
 }
