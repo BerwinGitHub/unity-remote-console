@@ -70,6 +70,7 @@ namespace RConsole.Runtime
                 Rect = GetNodeRect(go)
             };
             var t = go.transform;
+            GetComponentsData(go, model);
             var count = t.childCount;
             for (int i = 0; i < count; i++)
             {
@@ -79,6 +80,99 @@ namespace RConsole.Runtime
             }
 
             return model;
+        }
+
+        private void GetComponentsData(GameObject go, LookInViewModel model)
+        {
+            var components = go.GetComponents<Component>();
+            foreach (var c in components)
+            {
+                if (c == null) continue;
+                var compModel = new ComponentModel
+                {
+                    TypeName = c.GetType().Name
+                };
+
+                // 通用属性
+                if (c is Behaviour behaviour)
+                {
+                    compModel.Properties["Enabled"] = behaviour.enabled.ToString();
+                }
+
+                // 特殊组件处理
+                if (c is UnityEngine.UI.Text text)
+                {
+                    compModel.Properties["Text"] = text.text;
+                    compModel.Properties["Color"] = text.color.ToString();
+                    compModel.Properties["FontSize"] = text.fontSize.ToString();
+                }
+                else if (c is UnityEngine.UI.Image image)
+                {
+                    compModel.Properties["Color"] = image.color.ToString();
+                    if (image.sprite != null)
+                    {
+                        compModel.Properties["Sprite"] = image.sprite.name;
+                        try
+                        {
+                            var texture = image.sprite.texture;
+                            if (texture != null)
+                            {
+                                // 限制最大尺寸，保持长宽比
+                                int maxDimension = 512;
+                                int width = texture.width;
+                                int height = texture.height;
+                                if (width > maxDimension || height > maxDimension)
+                                {
+                                    float aspect = (float)width / height;
+                                    if (width > height)
+                                    {
+                                        width = maxDimension;
+                                        height = Mathf.RoundToInt(width / aspect);
+                                    }
+                                    else
+                                    {
+                                        height = maxDimension;
+                                        width = Mathf.RoundToInt(height * aspect);
+                                    }
+                                }
+
+                                var tmp = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
+                                Graphics.Blit(texture, tmp);
+                                var previous = RenderTexture.active;
+                                RenderTexture.active = tmp;
+                                var myTexture2D = new Texture2D(width, height);
+                                myTexture2D.ReadPixels(new Rect(0, 0, tmp.width, tmp.height), 0, 0);
+                                myTexture2D.Apply();
+                                RenderTexture.active = previous;
+                                RenderTexture.ReleaseTemporary(tmp);
+                                compModel.ExtraData = myTexture2D.EncodeToPNG();
+                                if (Application.isPlaying) Object.Destroy(myTexture2D);
+                                else Object.DestroyImmediate(myTexture2D);
+                            }
+                        }
+                        catch (System.Exception e)
+                        {
+                            Debug.LogError($"LookIn Image Sync Error: {e.Message}");
+                        }
+                    }
+                }
+                else if (c is RectTransform rt)
+                {
+                    compModel.Properties["AnchoredPosition"] = rt.anchoredPosition.ToString();
+                    compModel.Properties["SizeDelta"] = rt.sizeDelta.ToString();
+                    compModel.Properties["AnchorMin"] = rt.anchorMin.ToString();
+                    compModel.Properties["AnchorMax"] = rt.anchorMax.ToString();
+                    compModel.Properties["Pivot"] = rt.pivot.ToString();
+                }
+                else if (c is Transform t)
+                {
+                    compModel.Properties["LocalPosition"] = t.localPosition.ToString();
+                    compModel.Properties["LocalEulerAngles"] = t.localEulerAngles.ToString();
+                    compModel.Properties["LocalScale"] = t.localScale.ToString();
+                }
+
+                model.Components.Add(compModel);
+            }
         }
 
         private GameObject FindByPath(string path)

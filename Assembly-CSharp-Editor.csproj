@@ -47,6 +47,7 @@
   <ItemGroup>
     <Compile Include="Assets/RemoteConsole/Editor/View/RConsoleFileBrowser.cs" />
     <Compile Include="Assets/RemoteConsole/Editor/View/RConsoleDetailView.cs" />
+    <Compile Include="Assets/RemoteConsole/Editor/View/RemoteNodeDataEditor.cs" />
     <Compile Include="Assets/RemoteConsole/Editor/Test/IconHelper.cs" />
     <Compile Include="Assets/RemoteConsole/Editor/Utils/NETUtils.cs" />
     <Compile Include="Assets/RemoteConsole/Editor/Model/RConsoleViewModel.cs" />

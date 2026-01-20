@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.SceneManagement;
 using UnityEditor.SceneManagement;
+using RConsole.Runtime;
 
 namespace RConsole.Editor
 {
@@ -257,6 +258,12 @@ namespace RConsole.Editor
 
             var connection = GetSelectConnection();
             lookinRoot = new GameObject($"LookIn({connection.ClientModel.deviceName})");
+            // 添加 Canvas 以便 UI 组件正常显示
+            var canvas = lookinRoot.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            lookinRoot.AddComponent<UnityEngine.UI.CanvasScaler>();
+            lookinRoot.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            
             Undo.RegisterCreatedObjectUndo(lookinRoot, "Create LookIn Root");
 
             BuildEditorNodes(lookinRoot.transform, lookInViewModel);
@@ -271,13 +278,138 @@ namespace RConsole.Editor
             LCLog.Log($"当前设备: {connection.ClientModel.deviceName}，已将 Lookin 视图添加到场景中");
         }
 
+        private bool TryParseUnityColor(string colorStr, out Color color)
+        {
+            color = Color.white;
+            if (string.IsNullOrEmpty(colorStr)) return false;
+            // Unity ToString format: RGBA(r, g, b, a)
+            if (colorStr.StartsWith("RGBA("))
+            {
+                var content = colorStr.Substring(5, colorStr.Length - 6);
+                var parts = content.Split(',');
+                if (parts.Length == 4)
+                {
+                    if (float.TryParse(parts[0], out var r) &&
+                        float.TryParse(parts[1], out var g) &&
+                        float.TryParse(parts[2], out var b) &&
+                        float.TryParse(parts[3], out var a))
+                    {
+                        color = new Color(r, g, b, a);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private bool TryParseVector2(string str, out Vector2 v)
+        {
+            v = Vector2.zero;
+            if (string.IsNullOrEmpty(str)) return false;
+            str = str.Trim();
+            if (str.StartsWith("(") && str.EndsWith(")"))
+            {
+                str = str.Substring(1, str.Length - 2);
+            }
+            var parts = str.Split(',');
+            if (parts.Length >= 2)
+            {
+                if (float.TryParse(parts[0], out var x) && float.TryParse(parts[1], out var y))
+                {
+                    v = new Vector2(x, y);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool TryParseVector3(string str, out Vector3 v)
+        {
+            v = Vector3.zero;
+            if (string.IsNullOrEmpty(str)) return false;
+            str = str.Trim();
+            if (str.StartsWith("(") && str.EndsWith(")"))
+            {
+                str = str.Substring(1, str.Length - 2);
+            }
+            var parts = str.Split(',');
+            if (parts.Length >= 3)
+            {
+                if (float.TryParse(parts[0], out var x) && float.TryParse(parts[1], out var y) && float.TryParse(parts[2], out var z))
+                {
+                    v = new Vector3(x, y, z);
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void BuildEditorNodes(Transform parent, LookInViewModel model)
         {
             var go = new GameObject(string.IsNullOrEmpty(model.Name) ? "Node" : model.Name);
             go.SetActive(model.IsActive);
             Undo.RegisterCreatedObjectUndo(go, "Create LookIn Node");
+            
+            // 必须先添加 RectTransform (它会替换默认的 Transform)，然后再获取 transform 引用
+            // 否则之前的 transform 引用在替换后会失效，导致子节点无法正确挂载
+            var rt = go.AddComponent<RectTransform>();
+            // 默认值，防止没找到数据时缩成一点，后续会尝试从组件数据中覆盖
+            rt.sizeDelta = new Vector2(model.Rect.width, model.Rect.height);
+
             var t = go.transform;
             t.SetParent(parent, false);
+            
+            if (model.Components != null && model.Components.Count > 0)
+            {
+                var remoteData = go.AddComponent<RemoteNodeData>();
+                remoteData.Components = model.Components;
+
+                foreach (var comp in model.Components)
+                {
+                    if (comp.TypeName == "RectTransform")
+                    {
+                        if (comp.Properties.TryGetValue("AnchoredPosition", out var posStr) && TryParseVector2(posStr, out var pos)) rt.anchoredPosition = pos;
+                        if (comp.Properties.TryGetValue("SizeDelta", out var sizeStr) && TryParseVector2(sizeStr, out var size)) rt.sizeDelta = size;
+                        if (comp.Properties.TryGetValue("AnchorMin", out var minStr) && TryParseVector2(minStr, out var min)) rt.anchorMin = min;
+                        if (comp.Properties.TryGetValue("AnchorMax", out var maxStr) && TryParseVector2(maxStr, out var max)) rt.anchorMax = max;
+                        if (comp.Properties.TryGetValue("Pivot", out var pivotStr) && TryParseVector2(pivotStr, out var pivot)) rt.pivot = pivot;
+                    }
+                    else if (comp.TypeName == "Transform")
+                    {
+                        if (comp.Properties.TryGetValue("LocalPosition", out var posStr) && TryParseVector3(posStr, out var pos)) t.localPosition = pos;
+                        if (comp.Properties.TryGetValue("LocalEulerAngles", out var rotStr) && TryParseVector3(rotStr, out var rot)) t.localEulerAngles = rot;
+                        if (comp.Properties.TryGetValue("LocalScale", out var scaleStr) && TryParseVector3(scaleStr, out var scale)) t.localScale = scale;
+                    }
+                    else if (comp.TypeName == "Image" && comp.ExtraData != null && comp.ExtraData.Length > 0)
+                    {
+                        var img = go.AddComponent<UnityEngine.UI.Image>();
+                        var tex = new Texture2D(2, 2);
+                        if (tex.LoadImage(comp.ExtraData))
+                        {
+                            var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                            sprite.name = comp.Properties.TryGetValue("Sprite", out var spriteName) ? spriteName : "RemoteSprite";
+                            img.sprite = sprite;
+                        }
+                        
+                        if (comp.Properties.TryGetValue("Color", out var colorStr))
+                        {
+                            if (TryParseUnityColor(colorStr, out var color))
+                            {
+                                img.color = color;
+                            }
+                        }
+                    }
+                    else if (comp.TypeName == "Text")
+                    {
+                        var txt = go.AddComponent<UnityEngine.UI.Text>();
+                        if (comp.Properties.TryGetValue("Text", out var textContent)) txt.text = textContent;
+                        if (comp.Properties.TryGetValue("FontSize", out var fontSizeStr) && int.TryParse(fontSizeStr, out var fontSize)) txt.fontSize = fontSize;
+                        if (comp.Properties.TryGetValue("Color", out var colorStr) && TryParseUnityColor(colorStr, out var color)) txt.color = color;
+                        // 为了防止字体缺失导致不显示，可以设为默认 Arial (Unity 默认行为)
+                    }
+                }
+            }
+
             var children = model.Children;
             if (children != null)
             {
