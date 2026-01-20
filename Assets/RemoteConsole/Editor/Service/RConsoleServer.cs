@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using RConsole.Common;
+using UnityEditor;
 using WebSocketSharp.Server;
 
 namespace RConsole.Editor
@@ -35,8 +36,10 @@ namespace RConsole.Editor
 
             try
             {
-                // 确保主线程调度器已初始化
-                MainThreadDispatcher.Initialize();
+                var mainThreadDispatcher = new MainThreadDispatcher();
+                EditorApplication.update -= mainThreadDispatcher.Update;
+                EditorApplication.update += mainThreadDispatcher.Update;
+                RConsoleConnection.MainThreadDispatcher = mainThreadDispatcher;
                 // 使用 WebSocketSharp 启动服务器
                 _wsServer = new WebSocketServer(IPAddress.Any, Port);
                 var route = string.IsNullOrEmpty(Path) ? "/" : (Path.StartsWith("/") ? Path : "/" + Path);
@@ -46,7 +49,7 @@ namespace RConsole.Editor
                 IsStarted = true;
                 RConsoleCtrl.Instance.SetServerStarted(IsStarted);
                 EnvelopResolver.OnEnable();
-                LCLog.Log($"服务启动成功，请在输入下列地址连接：");
+                LCLog.Log($"服务启动成功，请在输入下列地址连接1：");
                 var ips = NETUtils.GetIPv4Addresses();
                 for (int i = 0; i < ips.Length; i++)
                 {

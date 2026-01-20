@@ -1,25 +1,31 @@
 using System;
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEngine;
 
 namespace RConsole.Common
 {
     // 简单的主线程调度器：在 Editor 主循环中执行排队的操作
-    public static class MainThreadDispatcher
+    public class MainThreadDispatcher
     {
-        private static readonly object _lock = new object();
-        private static readonly Queue<Action> _queue = new Queue<Action>();
-        private static bool _initialized;
+        private readonly object _lock = new object();
+        private readonly Queue<Action> _queue = new Queue<Action>();
+        private bool _initialized;
 
-        public static void Initialize()
+        public MainThreadDispatcher()
+        {
+            Initialize();
+            // EditorApplication.update -= Update;
+            // EditorApplication.update += Update;
+        }
+
+        public void Initialize()
         {
             if (_initialized) return;
             _initialized = true;
-            EditorApplication.update -= Update;
-            EditorApplication.update += Update;
         }
 
-        public static void Enqueue(Action action)
+        public void Enqueue(Action action)
         {
             if (action == null) return;
             Initialize();
@@ -29,7 +35,7 @@ namespace RConsole.Common
             }
         }
 
-        private static void Update()
+        public void Update()
         {
             // 每帧尽量清空队列，避免积压
             while (true)

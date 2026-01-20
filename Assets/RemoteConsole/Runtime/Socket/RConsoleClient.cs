@@ -37,6 +37,13 @@ namespace RConsole.Runtime
         private readonly Dictionary<string, List<BroadcastHandler>> _broadcastHandlers =
             new Dictionary<string, List<BroadcastHandler>>();
 
+        private MainThreadDispatcher _mainThreadDispatcher = null;
+
+        public RConsoleClient()
+        {
+            _mainThreadDispatcher = new MainThreadDispatcher();
+        }
+
         public async Task Connect()
         {
             var errMsg = await ConnectAsync();
@@ -91,6 +98,11 @@ namespace RConsole.Runtime
                 _receiveLoopTask = null;
                 _ws = null;
             }
+        }
+
+        public void Update()
+        {
+            if (_mainThreadDispatcher != null) _mainThreadDispatcher.Update();
         }
 
         public void Dispose()
@@ -188,7 +200,7 @@ namespace RConsole.Runtime
                     var data = ms.ToArray();
                     if (msgType == WebSocketMessageType.Binary)
                     {
-                        MainThreadDispatcher.Enqueue(() =>
+                        _mainThreadDispatcher.Enqueue(() =>
                         {
 #if RC_USE_GOOGLE_PROTOBUF
                             Envelope env = null;
@@ -213,7 +225,7 @@ namespace RConsole.Runtime
                     else if (msgType == WebSocketMessageType.Text)
                     {
                         var text = Encoding.UTF8.GetString(data);
-                        MainThreadDispatcher.Enqueue(() => { ServerTextReceived?.Invoke(text); });
+                        _mainThreadDispatcher.Enqueue(() => { ServerTextReceived?.Invoke(text); });
                     }
                 }
                 catch (Exception ex)

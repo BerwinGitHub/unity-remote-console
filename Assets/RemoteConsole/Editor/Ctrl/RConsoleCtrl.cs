@@ -126,7 +126,7 @@ namespace RConsole.Editor
             if (logModel == null) return null;
             var clientModel = connection.ClientModel;
             if (clientModel != null) logModel.clientModel = clientModel;
-            Log(logModel);
+            LCLog.LogFromModel(logModel);
             return null;
         }
 
@@ -150,12 +150,7 @@ namespace RConsole.Editor
                 stackTrace = Environment.StackTrace,
                 threadId = System.Threading.Thread.CurrentThread.ManagedThreadId
             };
-            Log(model);
-        }
-
-        public void Log(LogModel log)
-        {
-            ViewModel.Add(log);
+            // ViewModel.Add(log);
         }
 
         public void AddConnectedClient(ClientModel model)

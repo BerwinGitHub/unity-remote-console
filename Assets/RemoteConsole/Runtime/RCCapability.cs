@@ -5,17 +5,17 @@ using UnityEngine;
 namespace RConsole.Runtime
 {
     // 单例日志管理器：负责连接远端控制台与转发 Unity 日志
-    public class RConsoleCtrl
+    public class RCCapability
     {
-        private static RConsoleCtrl _instance;
-        public static RConsoleCtrl Instance => _instance ??= new RConsoleCtrl();
+        private static RCCapability _instance;
+        public static RCCapability Instance => _instance ??= new RCCapability();
 
         private RConsoleClient _client;
         public RConsoleClient WebSocket => _client;
         private bool _capturingLogs;
         public bool IsCapturingLogs => _capturingLogs;
 
-        private RConsoleCtrl()
+        private RCCapability()
         {
             // 允许默认配置，必要时由 Init 指定
         }
@@ -63,7 +63,7 @@ namespace RConsole.Runtime
         /// <summary>
         /// 开启 Unity 日志转发（通过 RCLogManager 捕获并发送）。
         /// </summary>
-        public void ForwardingUnityLog()
+        public void CaptureLog()
         {
             if (_capturingLogs) return;
             Application.logMessageReceivedThreaded += OnUnityLogMessage;
@@ -73,7 +73,7 @@ namespace RConsole.Runtime
         /// <summary>
         /// 关闭 Unity 日志转发。
         /// </summary>
-        public void StopForwardingUnityLog()
+        public void EscapeLog()
         {
             if (!_capturingLogs) return;
             Application.logMessageReceivedThreaded -= OnUnityLogMessage;
@@ -87,7 +87,7 @@ namespace RConsole.Runtime
         {
             try
             {
-                StopForwardingUnityLog();
+                EscapeLog();
                 _client?.Disconnect();
             }
             catch
@@ -99,21 +99,9 @@ namespace RConsole.Runtime
             }
         }
 
-        /// <summary>
-        /// 处理 Unity 日志（线程回调）。
-        /// </summary>
-        private void OnUnityLogMessage(string logString, string stackTrace, LogType type)
+        public void Update()
         {
-            var lr = new LogModel
-            {
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                level = type,
-                tag = "Unity",
-                message = logString,
-                stackTrace = stackTrace ?? string.Empty,
-                threadId = System.Threading.Thread.CurrentThread.ManagedThreadId
-            };
-            SendLog(lr);
+            _client?.Update();
         }
 
         /// <summary>
@@ -131,6 +119,26 @@ namespace RConsole.Runtime
             {
                 Debug.LogWarning($"RCLogManager send failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 处理 Unity 日志（线程回调）。
+        /// </summary>
+        private void OnUnityLogMessage(string logString, string stackTrace, LogType type)
+        {
+            // 防止递归：忽略由 RemoteConsole 自身在编辑器中输出的日志
+            if (!string.IsNullOrEmpty(logString) && logString.StartsWith(RConsoleConstants.LogPrefix)) return;
+
+            var lr = new LogModel
+            {
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                level = type,
+                tag = "Unity",
+                message = logString,
+                stackTrace = stackTrace ?? string.Empty,
+                threadId = System.Threading.Thread.CurrentThread.ManagedThreadId
+            };
+            SendLog(lr);
         }
     }
 }

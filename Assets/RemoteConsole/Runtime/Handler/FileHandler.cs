@@ -9,14 +9,14 @@ namespace RConsole.Runtime
     {
         public override void OnEnable()
         {
-            RConsoleCtrl.Instance.WebSocket.On(EnvelopeKind.S2CFile, (byte)SubFile.FetchDirectory, OnFetchDirectory);
-            RConsoleCtrl.Instance.WebSocket.On(EnvelopeKind.S2CFile, (byte)SubFile.MD5, OnFetchMD5);
+            RCCapability.Instance.WebSocket.On(EnvelopeKind.S2CFile, (byte)SubFile.FetchDirectory, OnFetchDirectory);
+            RCCapability.Instance.WebSocket.On(EnvelopeKind.S2CFile, (byte)SubFile.MD5, OnFetchMD5);
         }
 
         public override void OnDisable()
         {
-            RConsoleCtrl.Instance.WebSocket.Off(EnvelopeKind.S2CFile, (byte)SubFile.FetchDirectory, OnFetchDirectory);
-            RConsoleCtrl.Instance.WebSocket.Off(EnvelopeKind.S2CFile, (byte)SubFile.MD5, OnFetchMD5);
+            RCCapability.Instance.WebSocket.Off(EnvelopeKind.S2CFile, (byte)SubFile.FetchDirectory, OnFetchDirectory);
+            RCCapability.Instance.WebSocket.Off(EnvelopeKind.S2CFile, (byte)SubFile.MD5, OnFetchMD5);
         }
 
         private IBinaryModelBase OnFetchDirectory(IBinaryModelBase model)

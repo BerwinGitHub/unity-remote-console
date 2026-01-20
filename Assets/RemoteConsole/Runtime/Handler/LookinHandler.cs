@@ -8,12 +8,12 @@ namespace RConsole.Runtime
     {
         public override void OnEnable()
         {
-            RConsoleCtrl.Instance.WebSocket.On(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, OnLookIn);
+            RCCapability.Instance.WebSocket.On(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, OnLookIn);
         }
 
         public override void OnDisable()
         {
-            RConsoleCtrl.Instance.WebSocket.Off(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, OnLookIn);
+            RCCapability.Instance.WebSocket.Off(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, OnLookIn);
         }
 
         private IBinaryModelBase OnLookIn(IBinaryModelBase model)

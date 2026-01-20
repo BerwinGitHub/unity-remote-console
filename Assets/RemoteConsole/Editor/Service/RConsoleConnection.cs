@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using RConsole.Common;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEditor;
 using WebSocketSharp;
 using WebSocketSharp.Server;
 
@@ -21,11 +23,13 @@ namespace RConsole.Editor
         private readonly Dictionary<string, List<RConsoleServer.BroadcastHandler>> _broadcastHandlers =
             new Dictionary<string, List<RConsoleServer.BroadcastHandler>>();
 
+        public static MainThreadDispatcher MainThreadDispatcher = null;
+
         protected override void OnOpen()
         {
             var id = ID;
             var remoteStr = UserEndPoint.Address.ToString();
-            MainThreadDispatcher.Enqueue(() =>
+            MainThreadDispatcher?.Enqueue(() =>
             {
                 lock (_lock)
                 {
@@ -51,24 +55,24 @@ namespace RConsole.Editor
                 if (e.IsBinary)
                 {
                     var data = e.RawData; // 捕获快照
-                    MainThreadDispatcher.Enqueue(() => ProcessEnvelopeBinary(id, data));
+                    MainThreadDispatcher?.Enqueue(() => ProcessEnvelopeBinary(id, data));
                 }
                 else if (e.IsText)
                 {
                     var json = e.Data;
-                    MainThreadDispatcher.Enqueue(() => ProcessEnvelopeJson(id, json));
+                    MainThreadDispatcher?.Enqueue(() => ProcessEnvelopeJson(id, json));
                 }
             }
             catch (Exception ex)
             {
-                MainThreadDispatcher.Enqueue(() => LCLog.LogWarning($"[服务]客户端消息处理错误：{ex.Message}"));
+                MainThreadDispatcher?.Enqueue(() => LCLog.LogWarning($"[服务]客户端消息处理错误：{ex.Message}"));
             }
         }
 
         protected override void OnClose(CloseEventArgs e)
         {
             var id = ID;
-            MainThreadDispatcher.Enqueue(() =>
+            MainThreadDispatcher?.Enqueue(() =>
             {
                 RConsoleCtrl.Instance.RemoveConnectedClient(_client);
                 _client = null;
