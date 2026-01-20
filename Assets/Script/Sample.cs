@@ -14,6 +14,11 @@ public class Sample : MonoBehaviour
     public Button btnForward;
     public Button btnStopForward;
 
+    private void Awake()
+    {
+        RCCapability.Instance.Initialize(Application.persistentDataPath);
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -30,6 +35,7 @@ public class Sample : MonoBehaviour
         btnDisconnect.interactable = RCCapability.Instance.IsConnected;
         btnForward.interactable = !RCCapability.Instance.IsCapturingLogs;
         btnStopForward.interactable = RCCapability.Instance.IsCapturingLogs;
+        RCCapability.Instance.Update();
     }
 
     public void OnConnectClicked()

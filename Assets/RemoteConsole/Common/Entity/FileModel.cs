@@ -33,7 +33,7 @@ namespace RConsole.Common
         /// <summary>
         /// 根路径
         /// </summary>
-        public string RootPath { get; set; } = Application.persistentDataPath;
+        public string RootPath { get; set; } = System.IO.Path.DirectorySeparatorChar.ToString();
 
         /// <summary>
         /// 节点名称

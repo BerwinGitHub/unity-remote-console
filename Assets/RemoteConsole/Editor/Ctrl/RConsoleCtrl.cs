@@ -96,14 +96,14 @@ namespace RConsole.Editor
         {
             if (!_server.IsStarted)
             {
-                LCLog.LogWarning("服务未启动");
+                // LCLog.LogWarning("服务未启动");
                 return null;
             }
 
             var selectModel = ViewModel.FilterClientModel;
             if (selectModel == null)
             {
-                LCLog.LogWarning("未选择客户端");
+                // LCLog.LogWarning("未选择客户端");
                 return null;
             }
 
@@ -185,6 +185,8 @@ namespace RConsole.Editor
 
         public void SetFilterClientInfoModel(ClientModel client)
         {
+            _fileRoot = null;
+            OnFileBrowserChanged?.Invoke(_fileRoot);
             _model.SetFilterClientInfoModel(client);
         }
 
@@ -223,7 +225,14 @@ namespace RConsole.Editor
             Undo.RegisterCreatedObjectUndo(lookinRoot, "Create LookIn Root");
 
             BuildEditorNodes(lookinRoot.transform, lookInViewModel);
-            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorApplication.isPlaying)
+            {
+                EditorSceneManager.MarkSceneDirty(scene);
+            }
+            else
+            {
+                LCLog.LogWarning("Lookin 视图只能在编辑模式下添加");
+            }
             LCLog.Log($"当前设备: {connection.ClientModel.deviceName}，已将 Lookin 视图添加到场景中");
         }
 

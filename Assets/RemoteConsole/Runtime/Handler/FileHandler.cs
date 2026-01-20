@@ -23,8 +23,8 @@ namespace RConsole.Runtime
         {
             var req = (FileModel)model;
             var path = req.Path;
-            path = path.Replace(Application.persistentDataPath, "");
-            path = Application.persistentDataPath + path;
+            path = path.Replace(RCCapability.Instance.PathRoot, "");
+            path = RCCapability.Instance.PathRoot + path;
             var root = BuildTree(path);
             root.Id = req.Id;
             return root;
@@ -34,8 +34,8 @@ namespace RConsole.Runtime
         {
             var req = (FileModel)model;
             var path = req.Path;
-            path = path.Replace(Application.persistentDataPath, "");
-            path = Application.persistentDataPath + path;
+            path = path.Replace(RCCapability.Instance.PathRoot, "");
+            path = RCCapability.Instance.PathRoot + path;
             var md5 = SafeGetFileMD5(path);
             req.MD5 = md5;
             return req;

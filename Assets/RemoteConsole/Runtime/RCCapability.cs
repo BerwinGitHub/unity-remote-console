@@ -15,10 +15,18 @@ namespace RConsole.Runtime
         private bool _capturingLogs;
         public bool IsCapturingLogs => _capturingLogs;
 
+        public string PathRoot { get; private set; } = "/";
+
         private RCCapability()
         {
             // 允许默认配置，必要时由 Init 指定
         }
+
+        public void Initialize(string pathRoot)
+        {
+            PathRoot = pathRoot;
+        }
+        
 
         /// <summary>
         /// 初始化并连接到服务器。
