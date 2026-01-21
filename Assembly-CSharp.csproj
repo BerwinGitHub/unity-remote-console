@@ -56,8 +56,8 @@
     <Compile Include="Assets/RemoteConsole/Common/Entity/ClientModel.cs" />
     <Compile Include="Assets/RemoteConsole/Common/EnvelopResolver.cs" />
     <Compile Include="Assets/RemoteConsole/Runtime/Handler/IHandler.cs" />
-    <Compile Include="Assets/RemoteConsole/Common/Entity/IBinaryModelBase.cs" />
     <Compile Include="Assets/RemoteConsole/Runtime/View/RemoteNodeData.cs" />
+    <Compile Include="Assets/RemoteConsole/Common/Entity/IBinaryModelBase.cs" />
     <Compile Include="Assets/RemoteConsole/Common/Entity/LookInModel.cs" />
     <Compile Include="Assets/RemoteConsole/Runtime/Handler/LookinHandler.cs" />
     <Compile Include="Assets/RemoteConsole/Runtime/RCLog.cs" />

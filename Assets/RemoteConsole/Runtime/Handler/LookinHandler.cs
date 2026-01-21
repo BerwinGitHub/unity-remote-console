@@ -1,6 +1,9 @@
 using RConsole.Common;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Reflection;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RConsole.Runtime
 {
@@ -88,36 +91,82 @@ namespace RConsole.Runtime
             foreach (var c in components)
             {
                 if (c == null) continue;
+                var type = c.GetType();
                 var compModel = new ComponentModel
                 {
-                    TypeName = c.GetType().Name
+                    TypeName = type.Name,
+                    FullTypeName = type.FullName
                 };
 
-                // 通用属性
-                if (c is Behaviour behaviour)
+                // 通用反射属性提取
+                try
                 {
-                    compModel.Properties["Enabled"] = behaviour.enabled.ToString();
+                    // 1. 提取属性 (Properties)
+                    // 排除 Obsolete 的，排除索引器
+                    var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                        .Where(p => p.CanRead && !p.IsDefined(typeof(System.ObsoleteAttribute), true) && p.GetIndexParameters().Length == 0);
+                    
+                    // 排除 Component/Object 基类及一些危险属性
+                    var excludedProps = new HashSet<string> { 
+                        "name", "tag", "hideFlags", "mesh", "material", "materials", "sharedMaterial", "sharedMaterials", 
+                        "gameObject", "transform", "runInEditMode", "useGUILayout"
+                    }; 
+                    
+                    foreach (var p in properties)
+                    {
+                        if (excludedProps.Contains(p.Name)) continue;
+                        // 排除基于 Component/GameObject 的引用，防止循环
+                        if (typeof(Component).IsAssignableFrom(p.PropertyType) || typeof(GameObject).IsAssignableFrom(p.PropertyType)) continue;
+                        // 排除 UnityEvent，避免序列化一大堆垃圾信息
+                        if (typeof(UnityEngine.Events.UnityEventBase).IsAssignableFrom(p.PropertyType)) continue;
+
+                        try
+                        {
+                            var val = p.GetValue(c);
+                            if (val != null)
+                            {
+                                compModel.Properties[p.Name] = val.ToString();
+                            }
+                        }
+                        catch { }
+                    }
+
+                    // 2. 提取字段 (Fields)
+                    var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance)
+                        .Where(f => !f.IsDefined(typeof(System.ObsoleteAttribute), true));
+                    
+                    foreach (var f in fields)
+                    {
+                        if (typeof(Component).IsAssignableFrom(f.FieldType) || typeof(GameObject).IsAssignableFrom(f.FieldType)) continue;
+                        
+                        try 
+                        {
+                            var val = f.GetValue(c);
+                            if (val != null)
+                            {
+                                compModel.Properties[f.Name] = val.ToString();
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"LookIn Reflection Error on {type.Name}: {e.Message}");
                 }
 
-                // 特殊组件处理
-                if (c is UnityEngine.UI.Text text)
+                // 特殊组件增强处理
+                if (c is UnityEngine.UI.Image image)
                 {
-                    compModel.Properties["Text"] = text.text;
-                    compModel.Properties["Color"] = text.color.ToString();
-                    compModel.Properties["FontSize"] = text.fontSize.ToString();
-                }
-                else if (c is UnityEngine.UI.Image image)
-                {
-                    compModel.Properties["Color"] = image.color.ToString();
                     if (image.sprite != null)
                     {
-                        compModel.Properties["Sprite"] = image.sprite.name;
+                        compModel.Properties["Sprite"] = image.sprite.name; // 覆盖/确保有 Sprite 名
+                        
                         try
                         {
                             var texture = image.sprite.texture;
                             if (texture != null)
                             {
-                                // 限制最大尺寸，保持长宽比
                                 int maxDimension = 512;
                                 int width = texture.width;
                                 int height = texture.height;
@@ -135,6 +184,16 @@ namespace RConsole.Runtime
                                         width = Mathf.RoundToInt(height * aspect);
                                     }
                                 }
+                                
+                                // 计算缩放后的 Border
+                                var border = image.sprite.border;
+                                float scaleX = (float)width / texture.width;
+                                float scaleY = (float)height / texture.height;
+                                border.x *= scaleX;
+                                border.y *= scaleY;
+                                border.z *= scaleX;
+                                border.w *= scaleY;
+                                compModel.Properties["SpriteBorder"] = border.ToString();
 
                                 var tmp = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
                                 Graphics.Blit(texture, tmp);
@@ -155,20 +214,6 @@ namespace RConsole.Runtime
                             Debug.LogError($"LookIn Image Sync Error: {e.Message}");
                         }
                     }
-                }
-                else if (c is RectTransform rt)
-                {
-                    compModel.Properties["AnchoredPosition"] = rt.anchoredPosition.ToString();
-                    compModel.Properties["SizeDelta"] = rt.sizeDelta.ToString();
-                    compModel.Properties["AnchorMin"] = rt.anchorMin.ToString();
-                    compModel.Properties["AnchorMax"] = rt.anchorMax.ToString();
-                    compModel.Properties["Pivot"] = rt.pivot.ToString();
-                }
-                else if (c is Transform t)
-                {
-                    compModel.Properties["LocalPosition"] = t.localPosition.ToString();
-                    compModel.Properties["LocalEulerAngles"] = t.localEulerAngles.ToString();
-                    compModel.Properties["LocalScale"] = t.localScale.ToString();
                 }
 
                 model.Components.Add(compModel);

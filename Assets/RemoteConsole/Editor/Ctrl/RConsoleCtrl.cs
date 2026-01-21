@@ -6,6 +6,9 @@ using UnityEditor;
 using UnityEngine.SceneManagement;
 using UnityEditor.SceneManagement;
 using RConsole.Runtime;
+using System.Reflection;
+using System.Linq;
+using System.Globalization;
 
 namespace RConsole.Editor
 {
@@ -289,10 +292,10 @@ namespace RConsole.Editor
                 var parts = content.Split(',');
                 if (parts.Length == 4)
                 {
-                    if (float.TryParse(parts[0], out var r) &&
-                        float.TryParse(parts[1], out var g) &&
-                        float.TryParse(parts[2], out var b) &&
-                        float.TryParse(parts[3], out var a))
+                    if (float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var r) &&
+                        float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var g) &&
+                        float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var b) &&
+                        float.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var a))
                     {
                         color = new Color(r, g, b, a);
                         return true;
@@ -314,7 +317,8 @@ namespace RConsole.Editor
             var parts = str.Split(',');
             if (parts.Length >= 2)
             {
-                if (float.TryParse(parts[0], out var x) && float.TryParse(parts[1], out var y))
+                if (float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) && 
+                    float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y))
                 {
                     v = new Vector2(x, y);
                     return true;
@@ -335,7 +339,9 @@ namespace RConsole.Editor
             var parts = str.Split(',');
             if (parts.Length >= 3)
             {
-                if (float.TryParse(parts[0], out var x) && float.TryParse(parts[1], out var y) && float.TryParse(parts[2], out var z))
+                if (float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) && 
+                    float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y) && 
+                    float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var z))
                 {
                     v = new Vector3(x, y, z);
                     return true;
@@ -351,9 +357,8 @@ namespace RConsole.Editor
             Undo.RegisterCreatedObjectUndo(go, "Create LookIn Node");
             
             // 必须先添加 RectTransform (它会替换默认的 Transform)，然后再获取 transform 引用
-            // 否则之前的 transform 引用在替换后会失效，导致子节点无法正确挂载
             var rt = go.AddComponent<RectTransform>();
-            // 默认值，防止没找到数据时缩成一点，后续会尝试从组件数据中覆盖
+            // 默认值，防止没找到数据时缩成一点
             rt.sizeDelta = new Vector2(model.Rect.width, model.Rect.height);
 
             var t = go.transform;
@@ -366,46 +371,64 @@ namespace RConsole.Editor
 
                 foreach (var comp in model.Components)
                 {
-                    if (comp.TypeName == "RectTransform")
+                    Component target = null;
+                    
+                    // 1. 获取或创建组件
+                    if (comp.TypeName == "Transform" || comp.TypeName == "RectTransform")
                     {
-                        if (comp.Properties.TryGetValue("AnchoredPosition", out var posStr) && TryParseVector2(posStr, out var pos)) rt.anchoredPosition = pos;
-                        if (comp.Properties.TryGetValue("SizeDelta", out var sizeStr) && TryParseVector2(sizeStr, out var size)) rt.sizeDelta = size;
-                        if (comp.Properties.TryGetValue("AnchorMin", out var minStr) && TryParseVector2(minStr, out var min)) rt.anchorMin = min;
-                        if (comp.Properties.TryGetValue("AnchorMax", out var maxStr) && TryParseVector2(maxStr, out var max)) rt.anchorMax = max;
-                        if (comp.Properties.TryGetValue("Pivot", out var pivotStr) && TryParseVector2(pivotStr, out var pivot)) rt.pivot = pivot;
+                        target = t;
                     }
-                    else if (comp.TypeName == "Transform")
+                    else
                     {
-                        if (comp.Properties.TryGetValue("LocalPosition", out var posStr) && TryParseVector3(posStr, out var pos)) t.localPosition = pos;
-                        if (comp.Properties.TryGetValue("LocalEulerAngles", out var rotStr) && TryParseVector3(rotStr, out var rot)) t.localEulerAngles = rot;
-                        if (comp.Properties.TryGetValue("LocalScale", out var scaleStr) && TryParseVector3(scaleStr, out var scale)) t.localScale = scale;
+                        // 尝试通过全名加载类型
+                        Type type = null;
+                        if (!string.IsNullOrEmpty(comp.FullTypeName))
+                        {
+                            type = GetTypeByFullName(comp.FullTypeName);
+                        }
+                        
+                        if (type != null)
+                        {
+                            // 避免重复添加 (有些组件可能互斥或已存在)
+                            target = go.GetComponent(type);
+                            if (target == null)
+                            {
+                                try { target = go.AddComponent(type); } catch { }
+                            }
+                        }
+                        
+                        // 降级策略：如果是已知 UI 组件但没找到类型（不太可能），尝试硬编码
+                        if (target == null)
+                        {
+                            if (comp.TypeName == "Image") target = go.AddComponent<UnityEngine.UI.Image>();
+                            else if (comp.TypeName == "Text") target = go.AddComponent<UnityEngine.UI.Text>();
+                            else if (comp.TypeName == "RawImage") target = go.AddComponent<UnityEngine.UI.RawImage>();
+                        }
                     }
-                    else if (comp.TypeName == "Image" && comp.ExtraData != null && comp.ExtraData.Length > 0)
+
+                    // 2. 特殊处理：Image Sprite 还原
+                    if (comp.TypeName == "Image" && target is UnityEngine.UI.Image img && comp.ExtraData != null && comp.ExtraData.Length > 0)
                     {
-                        var img = go.AddComponent<UnityEngine.UI.Image>();
                         var tex = new Texture2D(2, 2);
                         if (tex.LoadImage(comp.ExtraData))
                         {
-                            var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                            Vector4 border = Vector4.zero;
+                            if (comp.Properties.TryGetValue("SpriteBorder", out var borderStr))
+                            {
+                                var val = ParseValue(typeof(Vector4), borderStr);
+                                if (val != null) border = (Vector4)val;
+                            }
+
+                            var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100.0f, 0, SpriteMeshType.FullRect, border);
                             sprite.name = comp.Properties.TryGetValue("Sprite", out var spriteName) ? spriteName : "RemoteSprite";
                             img.sprite = sprite;
                         }
-                        
-                        if (comp.Properties.TryGetValue("Color", out var colorStr))
-                        {
-                            if (TryParseUnityColor(colorStr, out var color))
-                            {
-                                img.color = color;
-                            }
-                        }
                     }
-                    else if (comp.TypeName == "Text")
+
+                    // 3. 通用反射属性赋值
+                    if (target != null)
                     {
-                        var txt = go.AddComponent<UnityEngine.UI.Text>();
-                        if (comp.Properties.TryGetValue("Text", out var textContent)) txt.text = textContent;
-                        if (comp.Properties.TryGetValue("FontSize", out var fontSizeStr) && int.TryParse(fontSizeStr, out var fontSize)) txt.fontSize = fontSize;
-                        if (comp.Properties.TryGetValue("Color", out var colorStr) && TryParseUnityColor(colorStr, out var color)) txt.color = color;
-                        // 为了防止字体缺失导致不显示，可以设为默认 Arial (Unity 默认行为)
+                        ApplyProperties(target, comp.Properties);
                     }
                 }
             }
@@ -418,6 +441,80 @@ namespace RConsole.Editor
                     BuildEditorNodes(t, children[i]);
                 }
             }
+        }
+
+        private Type GetTypeByFullName(string fullName)
+        {
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var type = asm.GetType(fullName);
+                if (type != null) return type;
+            }
+            return null;
+        }
+
+        private void ApplyProperties(Component c, Dictionary<string, string> props)
+        {
+            var type = c.GetType();
+            foreach (var kv in props)
+            {
+                try
+                {
+                    // 尝试属性
+                    var p = type.GetProperty(kv.Key, BindingFlags.Public | BindingFlags.Instance);
+                    if (p != null && p.CanWrite)
+                    {
+                        var val = ParseValue(p.PropertyType, kv.Value);
+                        if (val != null) p.SetValue(c, val, null);
+                        continue;
+                    }
+                    
+                    // 尝试字段
+                    var f = type.GetField(kv.Key, BindingFlags.Public | BindingFlags.Instance);
+                    if (f != null)
+                    {
+                        var val = ParseValue(f.FieldType, kv.Value);
+                        if (val != null) f.SetValue(c, val);
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private object ParseValue(Type type, string valStr)
+        {
+            try
+            {
+                if (type == typeof(string)) return valStr;
+                if (type == typeof(bool)) return bool.Parse(valStr);
+                if (type == typeof(int)) return int.Parse(valStr, CultureInfo.InvariantCulture);
+                if (type == typeof(float)) return float.Parse(valStr, NumberStyles.Float, CultureInfo.InvariantCulture);
+                if (type.IsEnum) return Enum.Parse(type, valStr);
+                if (type == typeof(Vector2)) { return TryParseVector2(valStr, out var v) ? (object)v : null; }
+                if (type == typeof(Vector3)) { return TryParseVector3(valStr, out var v) ? (object)v : null; }
+                if (type == typeof(Color)) { return TryParseUnityColor(valStr, out var v) ? (object)v : null; }
+                if (type == typeof(Vector4)) 
+                {
+                    // 简单解析 Vector4 (x,y,z,w)
+                    var clean = valStr.Replace("(", "").Replace(")", "").Trim();
+                    var parts = clean.Split(',');
+                    if (parts.Length == 4) return new Vector4(
+                        float.Parse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture), 
+                        float.Parse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture), 
+                        float.Parse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture), 
+                        float.Parse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture));
+                }
+                if (type == typeof(Rect))
+                {
+                    // Rect (x:0.00, y:0.00, width:0.00, height:0.00) or similar
+                    // 简单起见，如果解析失败则忽略，或者尝试正则提取。
+                    // Unity 的 Rect.ToString 格式：(x:X, y:Y, width:W, height:H)
+                    // 但我们这里可以尝试更简单的处理，或者如果遇到复杂的就不支持
+                    // 暂时不支持 Rect 的反序列化，因为格式比较复杂且不统一
+                }
+            }
+            catch { }
+            return null;
         }
 
         #endregion

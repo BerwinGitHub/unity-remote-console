@@ -102,6 +102,7 @@ namespace RConsole.Common
     public class ComponentModel : IBinaryModelBase
     {
         public string TypeName { get; set; } = string.Empty;
+        public string FullTypeName { get; set; } = string.Empty;
         public Dictionary<string, string> Properties { get; set; } = new Dictionary<string, string>();
         public byte[] ExtraData { get; set; } // For example, image png data
 
@@ -111,6 +112,7 @@ namespace RConsole.Common
             using (var bw = new BinaryWriter(ms))
             {
                 bw.Write(TypeName);
+                bw.Write(FullTypeName);
                 bw.Write(Properties.Count);
                 foreach (var kv in Properties)
                 {
@@ -136,6 +138,7 @@ namespace RConsole.Common
         public override void FromBinary(BinaryReader br)
         {
             TypeName = br.ReadString();
+            FullTypeName = br.ReadString();
             var count = br.ReadInt32();
             Properties.Clear();
             for (int i = 0; i < count; i++)
