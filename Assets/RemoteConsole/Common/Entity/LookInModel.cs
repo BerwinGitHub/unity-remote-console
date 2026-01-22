@@ -20,6 +20,11 @@ namespace RConsole.Common
         public string Path { get; set; } = string.Empty;
 
         /// <summary>
+        /// 实例ID (Runtime Only)
+        /// </summary>
+        public int InstanceID { get; set; }
+
+        /// <summary>
         /// 是否激活
         /// </summary>
         public bool IsActive { get; set; } = false;
@@ -46,6 +51,7 @@ namespace RConsole.Common
             {
                 bw.Write(Name);
                 bw.Write(Path);
+                bw.Write(InstanceID);
                 bw.Write(IsActive);
                 bw.Write(Rect.x);
                 bw.Write(Rect.y);
@@ -74,6 +80,7 @@ namespace RConsole.Common
         {
             Name = br.ReadString();
             Path = br.ReadString();
+            InstanceID = br.ReadInt32();
             IsActive = br.ReadBoolean();
             Rect = new Rect(br.ReadSingle(), br.ReadSingle(), br.ReadSingle(), br.ReadSingle());
             

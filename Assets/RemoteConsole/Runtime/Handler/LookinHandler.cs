@@ -9,14 +9,87 @@ namespace RConsole.Runtime
 {
     public class LookinHandler : IHandler
     {
+        private static Dictionary<int, GameObject> _idCache = new Dictionary<int, GameObject>();
+
         public override void OnEnable()
         {
             RCCapability.Instance.WebSocket.On(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, OnLookIn);
+            RCCapability.Instance.WebSocket.On(EnvelopeKind.S2CLookIn, (byte)SubLookIn.SyncNode, OnSyncNode);
         }
 
         public override void OnDisable()
         {
             RCCapability.Instance.WebSocket.Off(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, OnLookIn);
+            RCCapability.Instance.WebSocket.Off(EnvelopeKind.S2CLookIn, (byte)SubLookIn.SyncNode, OnSyncNode);
+        }
+
+        private IBinaryModelBase OnSyncNode(IBinaryModelBase model)
+        {
+            var req = (StringModel)model;
+            if (string.IsNullOrEmpty(req.Value)) return null;
+            
+            // Debug.Log($"OnSyncNode cmd: {req.Value}");
+            var parts = req.Value.Split('|');
+            if (parts.Length < 3) return null;
+
+            if (int.TryParse(parts[0], out var id))
+            {
+                if (_idCache.TryGetValue(id, out var go) && go != null)
+                {
+                    string type = parts[1];
+                    string value = parts[2];
+                    ApplySync(go, type, value);
+                }
+            }
+            return null;
+        }
+
+        private void ApplySync(GameObject go, string type, string value)
+        {
+            try
+            {
+                if (type == "Active")
+                {
+                    go.SetActive(value == "1");
+                }
+                else if (type == "Pos")
+                {
+                    var v = ParseVector3(value);
+                    go.transform.localPosition = v;
+                }
+                else if (type == "Rot")
+                {
+                    var v = ParseVector3(value);
+                    go.transform.localEulerAngles = v;
+                }
+                else if (type == "Scale")
+                {
+                    var v = ParseVector3(value);
+                    go.transform.localScale = v;
+                }
+                else if (type == "Size")
+                {
+                    var rt = go.GetComponent<RectTransform>();
+                    if (rt != null)
+                    {
+                        var v = ParseVector2(value);
+                        rt.sizeDelta = v;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private Vector3 ParseVector3(string s)
+        {
+            var parts = s.Split(',');
+            return new Vector3(float.Parse(parts[0]), float.Parse(parts[1]), float.Parse(parts[2]));
+        }
+
+        private Vector2 ParseVector2(string s)
+        {
+            var parts = s.Split(',');
+            return new Vector2(float.Parse(parts[0]), float.Parse(parts[1]));
         }
 
         private IBinaryModelBase OnLookIn(IBinaryModelBase model)
@@ -30,6 +103,7 @@ namespace RConsole.Runtime
         {
             if (string.IsNullOrEmpty(path) || path == "/")
             {
+                _idCache.Clear();
                 var scene = SceneManager.GetActiveScene();
                 var model = new LookInViewModel
                 {
@@ -48,6 +122,12 @@ namespace RConsole.Runtime
                 return model;
             }
 
+            // 如果是指定路径，这里我们不需要清除 _idCache，因为可能是在增量获取（虽然目前没有增量获取）
+            // 但为了安全起见，每次 LookIn 还是重建 cache 比较好，除非我们确定是部分更新。
+            // 目前逻辑看起来每次都是全量（如果 path 是 /）。
+            // 如果 path 不是 /，我们假设这只是获取子树。
+            // 简单起见，只有全量获取时清除 cache。
+            
             var go = FindByPath(path);
             if (go == null)
             {
@@ -65,10 +145,14 @@ namespace RConsole.Runtime
 
         private LookInViewModel BuildNode(GameObject go, string currentPath)
         {
+            int id = go.GetInstanceID();
+            _idCache[id] = go;
+
             var model = new LookInViewModel
             {
                 Name = go.name,
                 Path = currentPath,
+                InstanceID = id,
                 IsActive = go.activeInHierarchy,
                 Rect = GetNodeRect(go)
             };

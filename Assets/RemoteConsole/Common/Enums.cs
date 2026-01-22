@@ -13,6 +13,7 @@ namespace RConsole.Common
     public enum SubLookIn : byte
     {
         LookIn = 1,
+        SyncNode = 2,
     }
 
     public enum SubHandshake : byte

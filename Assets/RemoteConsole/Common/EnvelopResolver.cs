@@ -13,10 +13,15 @@ namespace RConsole.Common
         public static void OnEnable()
         {
             Resolvers.Clear();
+            // base
             Register(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, () => new ClientModel(), null);
+            // log
             Register(EnvelopeKind.C2SLog, (byte)SubLog.Log, () => new LogModel(), null);
+            // lookin
             Register(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, () => new StringModel(),
                 () => new LookInViewModel());
+            Register(EnvelopeKind.S2CLookIn, (byte)SubLookIn.SyncNode, () => new StringModel(), null);
+            // file
             Register(EnvelopeKind.S2CFile, (byte)SubFile.FetchDirectory, () => new FileModel(),
                 () => new FileModel());
             Register(EnvelopeKind.S2CFile, (byte)SubFile.MD5, () => new FileModel(), () => new FileModel());

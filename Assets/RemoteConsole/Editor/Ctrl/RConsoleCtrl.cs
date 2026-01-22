@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 using UnityEditor.SceneManagement;
 using RConsole.Runtime;
 using System.Reflection;
+using System.IO;
 using System.Linq;
 using System.Globalization;
 
@@ -37,12 +38,26 @@ namespace RConsole.Editor
         {
             RConsoleServer.On(EnvelopeKind.C2SLog, (byte)SubLog.Log, OnLogReceived);
             RConsoleServer.On(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, OnHandshakeReceived);
+            
+            RemoteNodeSync.OnSyncRequest += OnNodeSyncRequest;
         }
 
         public void OnDisable()
         {
             RConsoleServer.Off(EnvelopeKind.C2SLog, (byte)SubLog.Log, OnLogReceived);
             RConsoleServer.Off(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, OnHandshakeReceived);
+            
+            RemoteNodeSync.OnSyncRequest -= OnNodeSyncRequest;
+        }
+
+        private void OnNodeSyncRequest(int instanceID, string type, string value)
+        {
+            var connection = GetSelectConnection();
+            if (connection == null) return;
+
+            var body = new StringModel($"{instanceID}|{type}|{value}");
+            Debug.Log($"OnNodeSyncRequest cmd: {body.Value}");
+            connection.Reqeust(EnvelopeKind.S2CLookIn, (byte)SubLookIn.SyncNode, body, null);
         }
 
         public void Connect()
@@ -364,6 +379,10 @@ namespace RConsole.Editor
             var t = go.transform;
             t.SetParent(parent, false);
             
+            // Add Sync Component
+            var sync = go.AddComponent<RemoteNodeSync>();
+            sync.RuntimeInstanceID = model.InstanceID;
+
             if (model.Components != null && model.Components.Count > 0)
             {
                 var remoteData = go.AddComponent<RemoteNodeData>();
@@ -432,6 +451,9 @@ namespace RConsole.Editor
                     }
                 }
             }
+
+            // 初始化同步组件状态，避免初始数据不一致导致的误同步
+            sync.Initialize();
 
             var children = model.Children;
             if (children != null)
