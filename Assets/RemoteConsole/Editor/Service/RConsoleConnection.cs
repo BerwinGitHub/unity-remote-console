@@ -73,7 +73,18 @@ namespace RConsole.Editor
             var id = ID;
             MainThreadDispatcher?.Enqueue(() =>
             {
-                RConsoleCtrl.Instance.RemoveConnectedClient(_client);
+                if (_client != null)
+                {
+                    RConsoleCtrl.Instance.RemoveConnectedClient(_client);
+                }
+                else
+                {
+                    // 尝试根据 ID 移除（如果 _client 为空，可能是尚未完全握手或已断开）
+                    // 但 RConsoleCtrl.Instance.RemoveConnectedClient 需要 ClientModel
+                    // 这里我们构造一个临时的 ClientModel 包含 connectID，因为 RemoveConnectedClient 主要是根据 connectID 移除
+                    RConsoleCtrl.Instance.RemoveConnectedClient(new ClientModel { connectID = id });
+                }
+                
                 _client = null;
                 RConsoleServer.Connections.Remove(id);
                 LCLog.Log($"[服务]客户端断开：id={id} ({e.Code})");

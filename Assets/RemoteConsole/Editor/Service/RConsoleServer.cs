@@ -78,6 +78,7 @@ namespace RConsole.Editor
                 }
 
                 _wsServer = null;
+                Connections.Clear();
                 RConsoleCtrl.Instance.ServerDisconnected();
             }
             catch (Exception ex)

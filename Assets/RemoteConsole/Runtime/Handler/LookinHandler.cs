@@ -104,29 +104,65 @@ namespace RConsole.Runtime
             if (string.IsNullOrEmpty(path) || path == "/")
             {
                 _idCache.Clear();
-                var scene = SceneManager.GetActiveScene();
                 var model = new LookInViewModel
                 {
-                    Name = scene.name,
+                    Name = "World",
                     Path = "/",
                     IsActive = true,
                     Rect = new Rect()
                 };
-                var roots = scene.GetRootGameObjects();
-                for (int i = 0; i < roots.Length; i++)
+
+                // 1. Iterate all loaded scenes
+                for (int i = 0; i < SceneManager.sceneCount; i++)
                 {
-                    var child = BuildNode(roots[i], "/" + roots[i].name);
-                    model.Children.Add(child);
+                    var scene = SceneManager.GetSceneAt(i);
+                    if (!scene.isLoaded) continue;
+
+                    var sceneModel = new LookInViewModel
+                    {
+                        Name = scene.name,
+                        Path = "/" + scene.name, // Virtual path for scene
+                        IsActive = true,
+                        Rect = new Rect()
+                    };
+
+                    var roots = scene.GetRootGameObjects();
+                    foreach (var rootGo in roots)
+                    {
+                        var child = BuildNode(rootGo, "/" + scene.name + "/" + rootGo.name);
+                        sceneModel.Children.Add(child);
+                    }
+                    model.Children.Add(sceneModel);
+                }
+
+                // 2. DontDestroyOnLoad Scene
+                var dontDestroyScene = GetDontDestroyOnLoadScene();
+                if (dontDestroyScene.IsValid())
+                {
+                    var ddModel = new LookInViewModel
+                    {
+                        Name = "DontDestroyOnLoad",
+                        Path = "/DontDestroyOnLoad",
+                        IsActive = true,
+                        Rect = new Rect()
+                    };
+                    
+                    var roots = dontDestroyScene.GetRootGameObjects();
+                    foreach (var rootGo in roots)
+                    {
+                        var child = BuildNode(rootGo, "/DontDestroyOnLoad/" + rootGo.name);
+                        ddModel.Children.Add(child);
+                    }
+                    model.Children.Add(ddModel);
                 }
 
                 return model;
             }
 
-            // 如果是指定路径，这里我们不需要清除 _idCache，因为可能是在增量获取（虽然目前没有增量获取）
-            // 但为了安全起见，每次 LookIn 还是重建 cache 比较好，除非我们确定是部分更新。
-            // 目前逻辑看起来每次都是全量（如果 path 是 /）。
-            // 如果 path 不是 /，我们假设这只是获取子树。
-            // 简单起见，只有全量获取时清除 cache。
+            // Path format: /SceneName/GoName/ChildName
+            // Note: This logic assumes path starts with /SceneName.
+            // But FindByPath implementation needs to be checked or updated because GameObject.Find usually doesn't care about Scene unless specified.
+            // Let's look at FindByPath later. For now, we update the tree structure.
             
             var go = FindByPath(path);
             if (go == null)
@@ -141,6 +177,22 @@ namespace RConsole.Runtime
             }
 
             return BuildNode(go, path);
+        }
+
+        private Scene GetDontDestroyOnLoadScene()
+        {
+            GameObject temp = null;
+            try
+            {
+                temp = new GameObject();
+                Object.DontDestroyOnLoad(temp);
+                return temp.scene;
+            }
+            finally
+            {
+                if (temp != null)
+                    Object.DestroyImmediate(temp);
+            }
         }
 
         private LookInViewModel BuildNode(GameObject go, string currentPath)
@@ -306,31 +358,53 @@ namespace RConsole.Runtime
 
         private GameObject FindByPath(string path)
         {
-            var scene = SceneManager.GetActiveScene();
-            var segs = path.Split('/');
-            var names = new System.Collections.Generic.List<string>();
-            for (int i = 0; i < segs.Length; i++)
+            var segs = path.Split(new[] { '/' }, System.StringSplitOptions.RemoveEmptyEntries);
+            if (segs.Length < 2) return null; // At least SceneName and RootGoName
+
+            string sceneName = segs[0];
+            string rootName = segs[1];
+
+            Scene targetScene = default;
+            
+            // 1. Find Scene
+            if (sceneName == "DontDestroyOnLoad")
             {
-                if (!string.IsNullOrEmpty(segs[i])) names.Add(segs[i]);
+                targetScene = GetDontDestroyOnLoadScene();
+            }
+            else
+            {
+                for (int i = 0; i < SceneManager.sceneCount; i++)
+                {
+                    var s = SceneManager.GetSceneAt(i);
+                    if (s.name == sceneName)
+                    {
+                        targetScene = s;
+                        break;
+                    }
+                }
             }
 
-            if (names.Count == 0) return null;
+            if (!targetScene.IsValid()) return null;
+
+            // 2. Find Root GameObject
             GameObject root = null;
-            var roots = scene.GetRootGameObjects();
-            for (int i = 0; i < roots.Length; i++)
+            var roots = targetScene.GetRootGameObjects();
+            foreach (var r in roots)
             {
-                if (roots[i].name == names[0])
+                if (r.name == rootName)
                 {
-                    root = roots[i];
+                    root = r;
                     break;
                 }
             }
 
             if (root == null) return null;
+
+            // 3. Find Child
             var current = root.transform;
-            for (int i = 1; i < names.Count; i++)
+            for (int i = 2; i < segs.Length; i++)
             {
-                current = current.Find(names[i]);
+                current = current.Find(segs[i]);
                 if (current == null) return null;
             }
 

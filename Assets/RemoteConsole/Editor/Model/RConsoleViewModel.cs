@@ -54,8 +54,14 @@ namespace RConsole.Editor
 
         public void RemoveConnectedClient(ClientModel client)
         {
-            _connectedClients.Remove(client);
-            Emit();
+            if (client == null) return;
+            // 查找 connectID 匹配的
+            var target = _connectedClients.Find(c => c.connectID == client.connectID);
+            if (target != null)
+            {
+                _connectedClients.Remove(target);
+                Emit();
+            }
         }
 
         public void ClearConnectedClients()

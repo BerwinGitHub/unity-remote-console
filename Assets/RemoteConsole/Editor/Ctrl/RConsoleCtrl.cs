@@ -243,6 +243,12 @@ namespace RConsole.Editor
         {
             _connections.Remove(model.connectID);
             _model.RemoveConnectedClient(model);
+            
+            // 如果断开的是当前选中的客户端，则重置选中状态
+            if (_model.FilterClientModel != null && _model.FilterClientModel.connectID == model.connectID)
+            {
+                SetFilterClientInfoModel(null);
+            }
         }
 
         public void SetServerStarted(bool started)
@@ -260,6 +266,7 @@ namespace RConsole.Editor
 
         public void ServerDisconnected()
         {
+            _connections.Clear();
             _model.ServerDisconnected();
         }
 
@@ -482,8 +489,9 @@ namespace RConsole.Editor
             sync.Initialize();
 
             var children = model.Children;
-            if (children != null)
+            if (children != null && children.Count > 0)
             {
+                t.hierarchyCapacity = children.Count;
                 for (int i = 0; i < children.Count; i++)
                 {
                     BuildEditorNodes(t, children[i]);
