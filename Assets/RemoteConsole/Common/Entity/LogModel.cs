@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Text;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -19,7 +18,7 @@ namespace RConsole.Common
         public string stackTrace;
         public int threadId;
 
-        [FormerlySerializedAs("clientInfoModel")] [DoNotSerialize] public ClientModel clientModel;
+        [FormerlySerializedAs("clientInfoModel")] [NonSerialized] public ClientModel clientModel;
 
         public override byte[] ToBinary()
         {

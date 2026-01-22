@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Text;
-using Unity.VisualScripting;
 
 namespace RConsole.Common
 {
@@ -17,10 +16,10 @@ namespace RConsole.Common
         public string appVersion;
         public string sessionId;
 
-        [DoNotSerialize] public string connectID;
-        [DoNotSerialize] public string address;
-        [DoNotSerialize] public DateTime connectedAt;
-        [DoNotSerialize] public bool isFiltered;
+        [NonSerialized] public string connectID;
+        [NonSerialized] public string address;
+        [NonSerialized] public DateTime connectedAt;
+        [NonSerialized] public bool isFiltered;
 
         public override byte[] ToBinary()
         {

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using RConsole.Common;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEditor;
 using WebSocketSharp;
