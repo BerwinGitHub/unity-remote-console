@@ -38,7 +38,7 @@ namespace RConsole.Editor
         {
             RConsoleServer.On(EnvelopeKind.C2SLog, (byte)SubLog.Log, OnLogReceived);
             RConsoleServer.On(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, OnHandshakeReceived);
-            
+
             RemoteNodeSync.OnSyncRequest += OnNodeSyncRequest;
         }
 
@@ -46,7 +46,7 @@ namespace RConsole.Editor
         {
             RConsoleServer.Off(EnvelopeKind.C2SLog, (byte)SubLog.Log, OnLogReceived);
             RConsoleServer.Off(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, OnHandshakeReceived);
-            
+
             RemoteNodeSync.OnSyncRequest -= OnNodeSyncRequest;
         }
 
@@ -77,6 +77,12 @@ namespace RConsole.Editor
         public void FetchLookin()
         {
             var connection = GetSelectConnection();
+            if (connection == null)
+            {
+                LCLog.LogWarning("未选择客户端");
+                return;
+            }
+
             var body = new StringModel("/");
             connection?.Reqeust(EnvelopeKind.S2CLookIn, (byte)SubLookIn.LookIn, body, model =>
             {
@@ -108,6 +114,26 @@ namespace RConsole.Editor
                 if (resp == null) return;
                 OnFileMD5Changed?.Invoke(resp);
             });
+        }
+
+        /// <summary>
+        /// 主动控制远端是否劫持日志（即时下发，不等待握手）
+        /// </summary>
+        public bool SendCaptureToggle(bool enabled)
+        {
+            var connection = GetSelectConnection();
+            if (connection == null)
+            {
+                LCLog.LogWarning("未选择客户端");
+                return false;
+            }
+            var body = new BoolModel(enabled);
+            var env = new Envelope(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, body.ToBinary())
+            {
+                IsResponse = true
+            };
+            connection.SendEnvelop(env);
+            return true;
         }
 
         public void DownloadFile(FileModel body)
@@ -183,11 +209,12 @@ namespace RConsole.Editor
             return null;
         }
 
-        public Envelope OnHandshakeReceived(RConsoleConnection connection, IBinaryModelBase model)
+        public IBinaryModelBase OnHandshakeReceived(RConsoleConnection connection, IBinaryModelBase model)
         {
             var handshakeModel = model as ClientModel;
             AddConnectedClient(handshakeModel);
-            return null;
+            var capture = ViewModel.CaptureLogOnConnect;
+            return new BoolModel(capture);
         }
 
         #endregion
@@ -280,7 +307,7 @@ namespace RConsole.Editor
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             lookinRoot.AddComponent<UnityEngine.UI.CanvasScaler>();
             lookinRoot.AddComponent<UnityEngine.UI.GraphicRaycaster>();
-            
+
             Undo.RegisterCreatedObjectUndo(lookinRoot, "Create LookIn Root");
 
             BuildEditorNodes(lookinRoot.transform, lookInViewModel);
@@ -331,7 +358,7 @@ namespace RConsole.Editor
             var parts = str.Split(',');
             if (parts.Length >= 2)
             {
-                if (float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) && 
+                if (float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) &&
                     float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y))
                 {
                     v = new Vector2(x, y);
@@ -353,8 +380,8 @@ namespace RConsole.Editor
             var parts = str.Split(',');
             if (parts.Length >= 3)
             {
-                if (float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) && 
-                    float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y) && 
+                if (float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) &&
+                    float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y) &&
                     float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var z))
                 {
                     v = new Vector3(x, y, z);
@@ -369,7 +396,7 @@ namespace RConsole.Editor
             var go = new GameObject(string.IsNullOrEmpty(model.Name) ? "Node" : model.Name);
             go.SetActive(model.IsActive);
             Undo.RegisterCreatedObjectUndo(go, "Create LookIn Node");
-            
+
             // 必须先添加 RectTransform (它会替换默认的 Transform)，然后再获取 transform 引用
             var rt = go.AddComponent<RectTransform>();
             // 默认值，防止没找到数据时缩成一点
@@ -377,7 +404,7 @@ namespace RConsole.Editor
 
             var t = go.transform;
             t.SetParent(parent, false);
-            
+
             // Add Sync Component
             var sync = go.AddComponent<RemoteNodeSync>();
             sync.RuntimeInstanceID = model.InstanceID;
@@ -390,7 +417,7 @@ namespace RConsole.Editor
                 foreach (var comp in model.Components)
                 {
                     Component target = null;
-                    
+
                     // 1. 获取或创建组件
                     if (comp.TypeName == "Transform" || comp.TypeName == "RectTransform")
                     {
@@ -404,7 +431,7 @@ namespace RConsole.Editor
                         {
                             type = GetTypeByFullName(comp.FullTypeName);
                         }
-                        
+
                         if (type != null)
                         {
                             // 避免重复添加 (有些组件可能互斥或已存在)
@@ -414,7 +441,7 @@ namespace RConsole.Editor
                                 try { target = go.AddComponent(type); } catch { }
                             }
                         }
-                        
+
                         // 降级策略：如果是已知 UI 组件但没找到类型（不太可能），尝试硬编码
                         if (target == null)
                         {
@@ -489,7 +516,7 @@ namespace RConsole.Editor
                         if (val != null) p.SetValue(c, val, null);
                         continue;
                     }
-                    
+
                     // 尝试字段
                     var f = type.GetField(kv.Key, BindingFlags.Public | BindingFlags.Instance);
                     if (f != null)
@@ -514,15 +541,15 @@ namespace RConsole.Editor
                 if (type == typeof(Vector2)) { return TryParseVector2(valStr, out var v) ? (object)v : null; }
                 if (type == typeof(Vector3)) { return TryParseVector3(valStr, out var v) ? (object)v : null; }
                 if (type == typeof(Color)) { return TryParseUnityColor(valStr, out var v) ? (object)v : null; }
-                if (type == typeof(Vector4)) 
+                if (type == typeof(Vector4))
                 {
                     // 简单解析 Vector4 (x,y,z,w)
                     var clean = valStr.Replace("(", "").Replace(")", "").Trim();
                     var parts = clean.Split(',');
                     if (parts.Length == 4) return new Vector4(
-                        float.Parse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture), 
-                        float.Parse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture), 
-                        float.Parse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture), 
+                        float.Parse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture),
+                        float.Parse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture),
+                        float.Parse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture),
                         float.Parse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture));
                 }
                 if (type == typeof(Rect))

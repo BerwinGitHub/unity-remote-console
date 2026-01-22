@@ -21,6 +21,17 @@ namespace RConsole.Editor
 
         public IReadOnlyList<ClientModel> ConnectedClients => _connectedClients;
 
+        /// <summary>
+        /// 是否在握手回执中要求远端劫持日志
+        /// </summary>
+        private bool _captureLogOnConnect = false;
+        public bool CaptureLogOnConnect => _captureLogOnConnect;
+        public void SetCaptureLogOnConnect(bool enabled)
+        {
+            _captureLogOnConnect = enabled;
+            Emit();
+        }
+
 
         /// <summary>
         /// 当前筛选的客户端

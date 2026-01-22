@@ -52,7 +52,7 @@ namespace RConsole.Editor
             {
                 _selfWindows = wins[0];
             }
-            
+
             // File Browser Init
             _treeState ??= new TreeViewState();
             _tree = new RConsoleTreeView(_treeState)
@@ -184,6 +184,19 @@ namespace RConsole.Editor
                 RConsoleClientPop.Open(serverBtnRect, this);
             }
 
+            // 劫持日志开关
+            var capture = RConsoleCtrl.Instance.ViewModel.CaptureLogOnConnect;
+            var newCapture = GUILayout.Toggle(capture, new GUIContent((capture ? "√" : "x") + " 劫持日志", "连接后客户端劫持 Unity 日志"), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false));
+            if (newCapture != capture)
+            {
+                RConsoleCtrl.Instance.ViewModel.SetCaptureLogOnConnect(newCapture);
+                var success = RConsoleCtrl.Instance.SendCaptureToggle(newCapture);
+                // if (!success)
+                // {
+                //     RConsoleCtrl.Instance.ViewModel.SetCaptureLogOnConnect(capture);
+                // }
+            }
+
             GUILayout.FlexibleSpace();
 
             // Tabs 切换
@@ -211,9 +224,9 @@ namespace RConsole.Editor
         {
             EditorGUILayout.BeginVertical();
             GUILayout.Space(10);
-            
+
             EditorGUILayout.HelpBox("LookIn 功能可以查看连接设备的实时界面层级结构。", MessageType.Info);
-            
+
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             Texture2D eyeOpen = EditorGUIUtility.FindTexture("animationvisibilitytoggleon");
@@ -243,10 +256,10 @@ namespace RConsole.Editor
             // 限制最小宽度，防止拖拽过小
             float minLeft = 160f;
             if (_splitLeft < minLeft) _splitLeft = minLeft;
-            
+
             // 直接使用垂直布局，指定宽度
             EditorGUILayout.BeginVertical(GUILayout.Width(_splitLeft), GUILayout.ExpandHeight(true));
-            
+
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
             var refreshIcon = EditorGUIUtility.IconContent("d_TreeEditor.Refresh");
             if (GUILayout.Button(new GUIContent(refreshIcon.image, "刷新文件列表"), EditorStyles.toolbarButton, GUILayout.Width(30)))
@@ -291,9 +304,9 @@ namespace RConsole.Editor
             {
                 _splitLeft += Event.current.delta.x;
                 // 限制最大宽度，防止把右边挤没了
-                float maxLeft = position.width - 240f; 
+                float maxLeft = position.width - 240f;
                 _splitLeft = Mathf.Clamp(_splitLeft, minLeft, maxLeft);
-                
+
                 Repaint();
                 Event.current.Use();
             }

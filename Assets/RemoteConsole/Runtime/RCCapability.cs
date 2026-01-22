@@ -45,6 +45,20 @@ namespace RConsole.Runtime
             Debug.Log($"RCLogManager Connect to {ip}:{port}{path}");
             // 由 RCLogManager 自行决定是否捕获 Unity 日志，因此此处不启用捕获
             await _client.Connect();
+            _client.On(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, model =>
+            {
+                var s = model as BoolModel;
+                if (s != null)
+                {
+                    if (s.Value)
+                    {
+                        CaptureLog();
+                    } else {
+                        EscapeLog();
+                    }
+                }
+                return null;
+            });
         }
 
         public async void Disconnect()

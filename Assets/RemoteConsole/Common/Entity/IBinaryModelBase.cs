@@ -113,6 +113,10 @@ namespace RConsole.Common
     {
         public bool Value;
 
+        public BoolModel()
+        {
+        }
+
         public BoolModel(bool value)
         {
             Value = value;

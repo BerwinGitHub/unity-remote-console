@@ -14,7 +14,7 @@ namespace RConsole.Common
         {
             Resolvers.Clear();
             // base
-            Register(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, () => new ClientModel(), null);
+            Register(EnvelopeKind.C2SHandshake, (byte)SubHandshake.Handshake, () => new ClientModel(), () => new BoolModel());
             // log
             Register(EnvelopeKind.C2SLog, (byte)SubLog.Log, () => new LogModel(), null);
             // lookin
