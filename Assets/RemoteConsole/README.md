@@ -26,7 +26,7 @@ RemoteConsole 是一个面向 Unity 项目的远程调试工具合集，提供�
   - 文件下载
   
 ## 功能使用示例
-  ![功能录屏](../../doc/screenrecord.mov)
+  ![功能录屏](../../doc/screenrecord.mp4)
 
 ## 集成与快速开始（设备端）
 
