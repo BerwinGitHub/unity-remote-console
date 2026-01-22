@@ -56,7 +56,6 @@ namespace RConsole.Editor
             if (connection == null) return;
 
             var body = new StringModel($"{instanceID}|{type}|{value}");
-            Debug.Log($"OnNodeSyncRequest cmd: {body.Value}");
             connection.Reqeust(EnvelopeKind.S2CLookIn, (byte)SubLookIn.SyncNode, body, null);
         }
 
